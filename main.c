@@ -4,12 +4,22 @@
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
+#include <search.h>
 
 struct sized_texture
 {
   SDL_Texture* texture;
   int width;
   int height;
+};
+
+struct bullet {
+  struct element *forward;
+  struct element *backward;
+  int x;
+  int y;
+  int vx;
+  int vy;
 };
 
 void init();
@@ -20,6 +30,7 @@ void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text);
 void load_texture(struct sized_texture *texture, char *path);
 void process_input(SDL_Event *e, int *quit);
 void init_ball();
+void fire();
 
 //Screen dimension constants
 int SCREEN_WIDTH;
@@ -55,6 +66,10 @@ char p1_score_s[10];
 int p2_score;
 char p2_score_s[10];
 int p1_flip;
+float speed_bullet;
+float angle_bullet;
+struct bullet *last_bullet;
+struct bullet *first_bullet;
 
 void init()
 {
@@ -275,11 +290,47 @@ void init_game()
   p2_score=0;
   player_speed=10;
   p1_flip=0;
+  speed_bullet=20.0;
+  angle_bullet=35.0*M_PI/180.0;
+  last_bullet=NULL;
+  first_bullet=NULL;
 }
 
+void fire()
+{
+  struct bullet *current;
+  
+  current = malloc(sizeof(struct bullet));
+  if(!p1_flip)
+  {
+    current->x=p1_x+texture_hunter.width;
+    current->y=p1_y;
+    current->vx=speed_bullet*cos(angle_bullet);
+    current->vy=-1.0*speed_bullet*sin(angle_bullet);
+  }
+  else
+  {
+    current->x=p1_x;
+    current->y=p1_y;
+    current->vx=-1.0*speed_bullet*cos(angle_bullet);
+    current->vy=-1.0*speed_bullet*sin(angle_bullet);
+  }
+  
+  if(first_bullet==NULL)
+  {
+    first_bullet=current;
+  }
+  insque(current, last_bullet);
+  last_bullet=current;
+}
 
 void render()
-{  
+{
+  struct bullet *bullet_i;
+  struct bullet *to_remove;
+  
+  to_remove=NULL;
+  
   // Update game
   p1_x=p1_x+=p1_vx;
   
@@ -301,8 +352,33 @@ void render()
   
   SDL_Rect fillRect3 = {20, 20, 3, 3};
   SDL_RenderFillRect( sdl_renderer, &fillRect3 );
+
+  for(bullet_i=first_bullet; bullet_i!=NULL; bullet_i=bullet_i->forward)
+  {
+    SDL_Rect fillRect4 = {bullet_i->x, bullet_i->y, 3, 3};
+    SDL_RenderFillRect(sdl_renderer, &fillRect4);
+    bullet_i->x+=bullet_i->vx;
+    bullet_i->y+=bullet_i->vy;
+    
+    if(bullet_i->y>SCREEN_HEIGHT || bullet_i->y<0 || bullet_i->x>SCREEN_WIDTH || bullet_i->x<0) {
+      to_remove=bullet_i;
+    }
+  }
   
-  
+  if(to_remove!=NULL)
+  {
+    remque(to_remove);
+    if(to_remove==first_bullet)
+    {
+      first_bullet=first_bullet->forward;
+    }
+    if(to_remove==last_bullet)
+    {
+      last_bullet=last_bullet->backward;
+    }
+    free(to_remove);
+  }
+      
   //Update screen
   SDL_RenderPresent(sdl_renderer);
 }
@@ -327,6 +403,7 @@ void process_input(SDL_Event *e, int *quit)
           case SDLK_LEFT: p1_vx=-1*player_speed ; break; 
           case SDLK_RIGHT: p1_vx=player_speed ; break;
 	  case 'z': p1_flip=(p1_flip+1)%2;
+	  case ' ': fire();
 	  case 'w': ; break;
 	  case 's': ; break;
           default: printf("key: %d\n", e->key.keysym.sym); break; 
