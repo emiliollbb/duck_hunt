@@ -52,6 +52,7 @@ struct sized_texture texture_text_p1;
 struct sized_texture texture_text_p2;
 struct sized_texture texture_background;
 struct sized_texture texture_hunter;
+struct sized_texture texture_bulllet;
 
 /** GAME DATA **/
 int p1_y;
@@ -70,6 +71,8 @@ float speed_bullet;
 float angle_bullet;
 struct bullet *last_bullet;
 struct bullet *first_bullet;
+int magazine;
+int magazine_size;
 
 void init()
 {
@@ -187,6 +190,9 @@ void load_media()
   
   //Load hunter 
   load_texture(&texture_hunter, "hunter.png"); 
+  
+  //Load bullet 
+  load_texture(&texture_bulllet, "bullet.png"); 
     
 }
 
@@ -264,7 +270,9 @@ void sync_render()
   render();  
   
   remaining = ticks;
-  remaining = remaining + 16 - SDL_GetTicks();
+  //remaining = remaining + 16 - SDL_GetTicks();
+  // 30 fps
+  remaining = remaining + 32 - SDL_GetTicks();
   
   if(remaining > 0)
   {
@@ -282,7 +290,7 @@ void init_game()
 {
   p1_x=10;
   p2_x=SCREEN_WIDTH-10;
-  p1_y=SCREEN_HEIGHT-texture_hunter.height-25;
+  p1_y=SCREEN_HEIGHT-texture_hunter.height-40;
   p2_y=0;
   p1_vx=0;
   p2_vx=0;
@@ -290,44 +298,51 @@ void init_game()
   p2_score=0;
   player_speed=10;
   p1_flip=0;
-  speed_bullet=20.0;
+  speed_bullet=50.0;
   angle_bullet=35.0*M_PI/180.0;
   last_bullet=NULL;
   first_bullet=NULL;
+  magazine_size=2;
+  magazine=magazine_size;
 }
 
 void fire()
 {
   struct bullet *current;
   
-  current = malloc(sizeof(struct bullet));
-  if(!p1_flip)
+  if(magazine>0)
   {
-    current->x=p1_x+texture_hunter.width;
-    current->y=p1_y;
-    current->vx=speed_bullet*cos(angle_bullet);
-    current->vy=-1.0*speed_bullet*sin(angle_bullet);
+    current = malloc(sizeof(struct bullet));
+    if(!p1_flip)
+    {
+      current->x=p1_x+texture_hunter.width;
+      current->y=p1_y;
+      current->vx=speed_bullet*cos(angle_bullet);
+      current->vy=-1.0*speed_bullet*sin(angle_bullet);
+    }
+    else
+    {
+      current->x=p1_x;
+      current->y=p1_y;
+      current->vx=-1.0*speed_bullet*cos(angle_bullet);
+      current->vy=-1.0*speed_bullet*sin(angle_bullet);
+    }
+    
+    if(first_bullet==NULL)
+    {
+      first_bullet=current;
+    }
+    insque(current, last_bullet);
+    last_bullet=current;
+    magazine--;    
   }
-  else
-  {
-    current->x=p1_x;
-    current->y=p1_y;
-    current->vx=-1.0*speed_bullet*cos(angle_bullet);
-    current->vy=-1.0*speed_bullet*sin(angle_bullet);
-  }
-  
-  if(first_bullet==NULL)
-  {
-    first_bullet=current;
-  }
-  insque(current, last_bullet);
-  last_bullet=current;
 }
 
 void render()
 {
   struct bullet *bullet_i;
   struct bullet *to_remove;
+  int i;
   
   to_remove=NULL;
   
@@ -347,12 +362,15 @@ void render()
   SDL_Rect fillRect2 = {p1_x, p1_y, texture_hunter.width, texture_hunter.height};
   SDL_RenderCopyEx(sdl_renderer, texture_hunter.texture, NULL, &fillRect2, 0.0, NULL, p1_flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
   
+  // Render bullets remaining
+  for(i=0; i<magazine; i++)
+  {
+    SDL_Rect fillRect3 = {10*i, SCREEN_HEIGHT - texture_bulllet.height-10, texture_bulllet.width, texture_bulllet.height};
+    SDL_RenderCopy(sdl_renderer, texture_bulllet.texture, NULL, &fillRect3);
+  }
   
-  SDL_SetRenderDrawColor(sdl_renderer, 0xFF, 0x00, 0x00, 0xFF );
-  
-  SDL_Rect fillRect3 = {20, 20, 3, 3};
-  SDL_RenderFillRect( sdl_renderer, &fillRect3 );
-
+  // Render fired bullets
+  SDL_SetRenderDrawColor(sdl_renderer, 0xFF, 0x00, 0x00, 0xFF );  
   for(bullet_i=first_bullet; bullet_i!=NULL; bullet_i=bullet_i->forward)
   {
     SDL_Rect fillRect4 = {bullet_i->x, bullet_i->y, 3, 3};
@@ -402,10 +420,11 @@ void process_input(SDL_Event *e, int *quit)
           case SDLK_DOWN: ; break; 
           case SDLK_LEFT: p1_vx=-1*player_speed ; break; 
           case SDLK_RIGHT: p1_vx=player_speed ; break;
-	  case 'z': p1_flip=(p1_flip+1)%2;
-	  case ' ': fire();
-	  case 'w': ; break;
-	  case 's': ; break;
+          case 'z': p1_flip=(p1_flip+1)%2; break;
+          case 'x': magazine=magazine_size; break;
+          case ' ': fire(); break;
+          case 'w': ; break;
+          case 's': ; break;
           default: printf("key: %d\n", e->key.keysym.sym); break; 
              
         }
