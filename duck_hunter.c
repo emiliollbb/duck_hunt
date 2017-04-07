@@ -6,6 +6,8 @@
 #include <math.h>
 #include <search.h>
 
+#define DUCKS_SIZE 10
+
 struct sized_texture
 {
   SDL_Texture* texture;
@@ -13,9 +15,20 @@ struct sized_texture
   int height;
 };
 
-struct bullet {
+struct bullet
+{
   struct element *forward;
   struct element *backward;
+  int x;
+  int y;
+  int vx;
+  int vy;
+};
+
+struct duck
+{
+  int enabled;
+  unsigned int start;
   int x;
   int y;
   int vx;
@@ -51,11 +64,14 @@ SDL_Joystick *sdl_gamepad;
 //Globally used font 
 TTF_Font *number_font = NULL;
 
+unsigned int frames;
+
 struct sized_texture texture_text_p1;
 struct sized_texture texture_text_p2;
 struct sized_texture texture_background;
 struct sized_texture texture_hunter;
 struct sized_texture texture_bulllet;
+struct sized_texture texture_sprites;
 
 /** GAME DATA **/
 int p1_y;
@@ -76,11 +92,13 @@ struct bullet *last_bullet;
 struct bullet *first_bullet;
 int magazine;
 int magazine_size;
+struct duck ducks[DUCKS_SIZE];
 
 void init()
 {
   SCREEN_WIDTH = 720;
   SCREEN_HEIGHT = 480;
+  frames = 0;
   sdl_window=NULL;
   sdl_renderer = NULL;
   sdl_gamepad = NULL;
@@ -165,6 +183,12 @@ void init()
 
 void close_sdl()
 {
+  // Destroy textures
+  SDL_DestroyTexture(&texture_background);
+  SDL_DestroyTexture(&texture_hunter);
+  SDL_DestroyTexture(&texture_bulllet);
+  SDL_DestroyTexture(&texture_sprites);
+    
   //Destroy renderer  
   if(sdl_renderer!=NULL)
   {
@@ -202,7 +226,10 @@ void load_media()
   load_texture(&texture_hunter, "hunter.png"); 
   
   //Load bullet 
-  load_texture(&texture_bulllet, "bullet.png"); 
+  load_texture(&texture_bulllet, "bullet.png");
+  
+  // Load sprites
+  load_texture(&texture_sprites, "duckhunt_sprites.png");
     
 }
 
@@ -298,6 +325,7 @@ void sync_render()
 
 void init_game()
 {
+  int i;
   p1_x=10;
   p2_x=SCREEN_WIDTH-10;
   p1_y=SCREEN_HEIGHT-texture_hunter.height-40;
@@ -314,6 +342,18 @@ void init_game()
   first_bullet=NULL;
   magazine_size=2;
   magazine=magazine_size;
+  
+  // init ducks
+  for(i=0; i<DUCKS_SIZE; i++)
+  {
+    ducks[i].x=-20;
+    ducks[i].y=150;
+    ducks[i].vx=5;
+    ducks[i].vy=0;
+    ducks[i].enabled=1;
+    ducks[i].start=100*i;
+  }
+  
 }
 
 void fire()
@@ -351,14 +391,28 @@ void fire()
 void render()
 {
   SDL_Rect sdl_rect;
+  SDL_Rect sdl_rect2;
   struct bullet *bullet_i;
   struct bullet *to_remove;
   int i;
+  
+  // Count frames
+  frames++;
   
   to_remove=NULL;
   
   // Update game
   p1_x=p1_x+=p1_vx;
+  
+  // update ducks
+  for(i=0; i<DUCKS_SIZE; i++)
+  {
+      if(ducks[i].enabled && frames>ducks[i].start && ducks[i].x<SCREEN_WIDTH)
+      {
+        ducks[i].x+=ducks[i].vx;
+        ducks[i].y+=ducks[i].vy;
+      }
+  }
   
   //Clear screen
   SDL_SetRenderDrawColor( sdl_renderer, 0x00, 0x00, 0x00, 0xFF );
@@ -375,6 +429,23 @@ void render()
   sdl_rect.h=texture_hunter.height;
   SDL_RenderCopyEx(sdl_renderer, texture_hunter.texture, NULL, &sdl_rect, 0.0, NULL, p1_flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
   
+  // Render ducks
+  for(i=0; i<DUCKS_SIZE; i++)
+  {
+      if(ducks[i].enabled && frames>ducks[i].start && ducks[i].x<SCREEN_WIDTH)
+      {
+        sdl_rect2.x=130+(frames/10%3*40);
+        sdl_rect2.y=120;
+        sdl_rect2.w=40;
+        sdl_rect2.h=30;
+        sdl_rect.x=ducks[i].x;
+        sdl_rect.y=ducks[i].y;
+        sdl_rect.w=sdl_rect2.w;
+        sdl_rect.h=sdl_rect2.h;      
+        SDL_RenderCopy(sdl_renderer, texture_sprites.texture, &sdl_rect2, &sdl_rect);
+      }
+  }
+      
   // Render bullets remaining
   for(i=0; i<magazine; i++)
   {
