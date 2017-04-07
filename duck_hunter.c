@@ -487,65 +487,33 @@ void render()
 
 void process_input(SDL_Event *e, int *quit)
 {
-      //User requests quit
-      if( e->type == SDL_QUIT )
+    //User requests quit
+      if(e->type == SDL_QUIT 
+          // User press ESC or q
+          || e->type == SDL_KEYDOWN && (e->key.keysym.sym=='q' || e->key.keysym.sym == 27)
+          // User 1 press select
+          || e->type == SDL_JOYBUTTONDOWN && e->jbutton.button == 8)
       {
         *quit = 1;
       }
-      //User presses a key 
-      else if( e->type == SDL_KEYDOWN ) 
+      // Axis 0 controls player velocity
+      else if(e->type == SDL_JOYAXISMOTION && e->jaxis.axis == 0)
       {
-        //Select surfaces based on key press 
-        switch( e->key.keysym.sym ) 
+        //printf("controller: %d, axis: %d, value: %d\n", e->jaxis.which, e->jaxis.axis, e->jaxis.value);
+        p1_vx=player_speed*e->jaxis.value/32767; 
+      }
+      // Buttons
+      else if(e->type == SDL_JOYBUTTONDOWN) 
+      {
+        switch(e->jbutton.button) 
         {
-          case 'q': *quit = 1; break;
-          case 27:  *quit = 1; break;
-          case SDLK_UP: ; break; 
-          case SDLK_DOWN: ; break; 
-          case SDLK_LEFT: p1_vx=-1*player_speed ; break; 
-          case SDLK_RIGHT: p1_vx=player_speed ; break;
-          case 'z': p1_flip=(p1_flip+1)%2; break;
-          case 'x': magazine=magazine_size; break;
-          case ' ': fire(); break;
-          case 'w': ; break;
-          case 's': ; break;
-          default: printf("key: %d\n", e->key.keysym.sym); break; 
-             
+          // Flip hunter
+          case 1: p1_flip=(p1_flip+1)%2; break;
+          // Fire
+          case 2: case 5: fire(); break;
+          // Reload
+          case 0: case 4: magazine=magazine_size; break;          
         }
-      }
-      else if( e->type == SDL_KEYUP ) 
-      {
-        //Select surfaces based on key press 
-        switch( e->key.keysym.sym ) 
-        {
-          case SDLK_UP: ; break; 
-          case SDLK_DOWN: ; break; 
-          case SDLK_LEFT: p1_vx=0 ; break; 
-          case SDLK_RIGHT: p1_vx=0 ; break;
-	  case 'w': ; break;
-	  case 's': ; break;
-         }
-      }
-      /* Handle Joystick Button Presses */
-      else if( e->type == SDL_JOYBUTTONDOWN)
-      {
-        switch( e->jbutton.button) 
-        {
-          case 0: ;
-          break;
-        }
-      }
-      else if( e->type == SDL_JOYAXISMOTION)
-      {
-	//Motion on controller 0 
-	if( e->jaxis.which == 0 ) 
-	{ 
-	  //X axis motion 
-	  if( e->jaxis.axis == 0 ) 
-	  { 
-	    printf("axis: %d\n", e->jaxis.value);
-	  }
-	}
       }
 }
 
