@@ -42,6 +42,9 @@ SDL_Window *sdl_window;
 //The window renderer
 SDL_Renderer* sdl_renderer;
 
+// Display mode
+SDL_DisplayMode sdl_display_mode;
+
 //Game Controller 1 handler 
 SDL_Joystick *sdl_gamepad;
 
@@ -115,9 +118,16 @@ void init()
       
     }
 
+    // Get display mode
+    if (SDL_GetDesktopDisplayMode(0, &sdl_display_mode) != 0) {
+      printf("SDL_GetDesktopDisplayMode failed: %s", SDL_GetError());
+      exit(-1);
+    }
+    SCREEN_WIDTH=sdl_display_mode.w;
+    SCREEN_HEIGHT=sdl_display_mode.h;
+    
     //Create window
-    sdl_window = SDL_CreateWindow( "SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN );
-    //sdl_window = SDL_CreateWindow( "SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_FULLSCREEN );
+    sdl_window = SDL_CreateWindow("Duck_hunter", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_FULLSCREEN );
     if( sdl_window == NULL )
     {
       printf( "Window could not be created! SDL Error: %s\n", SDL_GetError() );
@@ -340,6 +350,7 @@ void fire()
 
 void render()
 {
+  SDL_Rect sdl_rect;
   struct bullet *bullet_i;
   struct bullet *to_remove;
   int i;
@@ -355,12 +366,14 @@ void render()
     
   
   // Render background
-  SDL_Rect fillRect = {0, 0, texture_background.width, texture_background.height};
-  SDL_RenderCopy(sdl_renderer, texture_background.texture, NULL, &fillRect);
+  SDL_RenderCopy(sdl_renderer, texture_background.texture, NULL, NULL);
   
   // Render hunter
-  SDL_Rect fillRect2 = {p1_x, p1_y, texture_hunter.width, texture_hunter.height};
-  SDL_RenderCopyEx(sdl_renderer, texture_hunter.texture, NULL, &fillRect2, 0.0, NULL, p1_flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
+  sdl_rect.x=p1_x;
+  sdl_rect.y=p1_y;
+  sdl_rect.w=texture_hunter.width;
+  sdl_rect.h=texture_hunter.height;
+  SDL_RenderCopyEx(sdl_renderer, texture_hunter.texture, NULL, &sdl_rect, 0.0, NULL, p1_flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
   
   // Render bullets remaining
   for(i=0; i<magazine; i++)
