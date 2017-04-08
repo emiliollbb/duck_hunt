@@ -13,6 +13,7 @@
 #define DUCK_WIDTH 40
 #define DUCK_HEIGHT 30
 #define ANGLE_BULLET 35.0*M_PI/180.0
+#define SPEED_BULLET 50.0
 
 struct sized_texture
 {
@@ -44,6 +45,7 @@ struct duck
 struct shot_gun
 {
   int magazine;
+  unsigned int cocking_time;
 };
 
 void init();
@@ -106,7 +108,6 @@ int p2_score;
 char p2_score_s[10];
 int p1_flip;
 struct shot_gun shotgun;
-float speed_bullet;
 struct bullet bullets[BULLETS_SIZE];
 
 struct duck ducks[DUCKS_SIZE];
@@ -381,8 +382,8 @@ void init_game()
   p2_score=0;
   player_speed=10;
   p1_flip=0;
-  speed_bullet=50.0;
   shotgun.magazine=MAGAZINE_SIZE;
+  shotgun.cocking_time=0;
   
   // Init bullets
   for(i=0; i<BULLETS_SIZE; i++)
@@ -415,15 +416,15 @@ void fire()
     {
       current.x=p1_x+texture_hunter.width;
       current.y=p1_y;
-      current.vx=speed_bullet*cos(ANGLE_BULLET);
-      current.vy=-1.0*speed_bullet*sin(ANGLE_BULLET);
+      current.vx=SPEED_BULLET*cos(ANGLE_BULLET);
+      current.vy=-1.0*SPEED_BULLET*sin(ANGLE_BULLET);
     }
     else
     {
       current.x=p1_x;
       current.y=p1_y;
-      current.vx=-1.0*speed_bullet*cos(ANGLE_BULLET);
-      current.vy=-1.0*speed_bullet*sin(ANGLE_BULLET);
+      current.vx=-1.0*SPEED_BULLET*cos(ANGLE_BULLET);
+      current.vy=-1.0*SPEED_BULLET*sin(ANGLE_BULLET);
     }
     
     // Insert bullet in array
