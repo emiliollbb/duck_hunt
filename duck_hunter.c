@@ -4,9 +4,13 @@
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
-#include <search.h>
 
+#define MAGAZINE_SIZE 10
+#define BULLETS_SIZE 100
 #define DUCKS_SIZE 10
+#define COLLISION_MARGIN 5
+#define DUCK_WIDTH 40
+#define DUCK_HEIGHT 30
 
 struct sized_texture
 {
@@ -17,8 +21,7 @@ struct sized_texture
 
 struct bullet
 {
-  struct element *forward;
-  struct element *backward;
+  int enabled;
   int x;
   int y;
   int vx;
@@ -28,6 +31,7 @@ struct bullet
 struct duck
 {
   int enabled;
+  unsigned int shoot_time;
   unsigned int start;
   int x;
   int y;
@@ -38,6 +42,7 @@ struct duck
 void init();
 void close_sdl();
 void sync_render();
+void update_game();
 void render();
 void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text);
 void load_texture(struct sized_texture *texture, char *path);
@@ -88,10 +93,8 @@ char p2_score_s[10];
 int p1_flip;
 float speed_bullet;
 float angle_bullet;
-struct bullet *last_bullet;
-struct bullet *first_bullet;
+struct bullet bullets[BULLETS_SIZE];
 int magazine;
-int magazine_size;
 struct duck ducks[DUCKS_SIZE];
 
 void init()
@@ -303,7 +306,11 @@ void sync_render()
   long remaining;
   
   ticks = SDL_GetTicks();
-  
+  // Count frames
+  frames++;
+  // Update game data
+  update_game();
+  // Render screen
   render();  
   
   remaining = ticks;
@@ -338,68 +345,67 @@ void init_game()
   p1_flip=0;
   speed_bullet=50.0;
   angle_bullet=35.0*M_PI/180.0;
-  last_bullet=NULL;
-  first_bullet=NULL;
-  magazine_size=2;
-  magazine=magazine_size;
+  magazine=MAGAZINE_SIZE;
+  
+  // Init bullets
+  for(i=0; i<BULLETS_SIZE; i++)
+  {
+      bullets[i].enabled=0;
+  }
   
   // init ducks
   for(i=0; i<DUCKS_SIZE; i++)
   {
     ducks[i].x=-20;
     ducks[i].y=150;
-    ducks[i].vx=5;
+    ducks[i].vx=0;
     ducks[i].vy=0;
-    ducks[i].enabled=1;
-    ducks[i].start=100*i;
+    ducks[i].shoot_time=0;
+    ducks[i].start=100*i+50;
+    ducks[i].enabled=0;
   }
   
 }
 
 void fire()
 {
-  struct bullet *current;
+  struct bullet current;
+  int i;
   
   if(magazine>0)
   {
-    current = malloc(sizeof(struct bullet));
     if(!p1_flip)
     {
-      current->x=p1_x+texture_hunter.width;
-      current->y=p1_y;
-      current->vx=speed_bullet*cos(angle_bullet);
-      current->vy=-1.0*speed_bullet*sin(angle_bullet);
+      current.x=p1_x+texture_hunter.width;
+      current.y=p1_y;
+      current.vx=speed_bullet*cos(angle_bullet);
+      current.vy=-1.0*speed_bullet*sin(angle_bullet);
     }
     else
     {
-      current->x=p1_x;
-      current->y=p1_y;
-      current->vx=-1.0*speed_bullet*cos(angle_bullet);
-      current->vy=-1.0*speed_bullet*sin(angle_bullet);
+      current.x=p1_x;
+      current.y=p1_y;
+      current.vx=-1.0*speed_bullet*cos(angle_bullet);
+      current.vy=-1.0*speed_bullet*sin(angle_bullet);
     }
     
-    if(first_bullet==NULL)
+    // Insert bullet in array
+    for(i=0; i<BULLETS_SIZE; i++)
     {
-      first_bullet=current;
+        if(!bullets[i].enabled)
+        {
+            bullets[i]=current;
+            bullets[i].enabled=1;
+            magazine--;
+            break;
+        }
     }
-    insque(current, last_bullet);
-    last_bullet=current;
-    magazine--;    
   }
 }
 
-void render()
+void update_game()
 {
-  SDL_Rect sdl_rect;
-  SDL_Rect sdl_rect2;
-  struct bullet *bullet_i;
-  struct bullet *to_remove;
-  int i;
-  
-  // Count frames
-  frames++;
-  
-  to_remove=NULL;
+  int i,j;
   
   // Update game
   p1_x=p1_x+=p1_vx;
@@ -407,17 +413,79 @@ void render()
   // update ducks
   for(i=0; i<DUCKS_SIZE; i++)
   {
-      if(ducks[i].enabled && frames>ducks[i].start && ducks[i].x<SCREEN_WIDTH)
-      {
-        ducks[i].x+=ducks[i].vx;
-        ducks[i].y+=ducks[i].vy;
-      }
+    // Update ducks speed
+    
+    // If is time for the duck to start
+    if(frames==ducks[i].start)
+    {
+      ducks[i].enabled=1;
+      ducks[i].vx=1;
+      ducks[i].vy=0;
+    }
+    // Set speed to 0 to outscreen ducks
+    if(ducks[i].x>SCREEN_WIDTH || ducks[i].y>SCREEN_HEIGHT)
+    {
+      ducks[i].enabled=0;
+      ducks[i].vx=0;
+      ducks[i].vy=0;
+    }
+    // Shot time
+    if(ducks[i].shoot_time>0 && ducks[i].shoot_time==frames)
+    {
+      ducks[i].vx=0;
+      ducks[i].vy=0;
+    }
+    // 30 frames after shot, the ducks falls
+    if(ducks[i].shoot_time>0 && frames > ducks[i].shoot_time+30)
+    {
+      ducks[i].vx=0;
+      ducks[i].vy=10;
+    }
+    
+    // Update ducks position
+    ducks[i].x+=ducks[i].vx;
+    ducks[i].y+=ducks[i].vy;
   }
+  
+  // Update bullets
+  for(i=0; i<BULLETS_SIZE; i++)
+  {
+    if(bullets[i].y>SCREEN_HEIGHT || bullets[i].y<0 || bullets[i].x>SCREEN_WIDTH || bullets[i].x<0)
+    {
+      bullets[i].enabled=0;
+    }
+    if(bullets[i].enabled)
+    {
+      bullets[i].x+=bullets[i].vx;
+      bullets[i].y+=bullets[i].vy;
+    }
+  }
+  
+  // Check collisions
+  for(i=0; i<BULLETS_SIZE; i++)
+  {
+    for(j=0; j<DUCKS_SIZE; j++)
+    {
+      if(bullets[i].enabled && ducks[j].enabled &&
+        bullets[i].x>ducks[j].x+COLLISION_MARGIN && bullets[i].x<ducks[j].x+DUCK_WIDTH-COLLISION_MARGIN
+        && bullets[i].y>ducks[j].y+COLLISION_MARGIN && bullets[i].y<ducks[j].y+DUCK_HEIGHT-COLLISION_MARGIN)
+      {
+        ducks[j].shoot_time=frames+1;
+        bullets[i].enabled=0;
+      }
+    }
+  }
+}
+
+void render()
+{
+  SDL_Rect sdl_rect;
+  SDL_Rect sdl_rect2;
+  int i;
   
   //Clear screen
   SDL_SetRenderDrawColor( sdl_renderer, 0x00, 0x00, 0x00, 0xFF );
   SDL_RenderClear( sdl_renderer );
-    
   
   // Render background
   SDL_RenderCopy(sdl_renderer, texture_background.texture, NULL, NULL);
@@ -432,12 +500,25 @@ void render()
   // Render ducks
   for(i=0; i<DUCKS_SIZE; i++)
   {
-      if(ducks[i].enabled && frames>ducks[i].start && ducks[i].x<SCREEN_WIDTH)
+      if(ducks[i].enabled)
       {
-        sdl_rect2.x=130+(frames/10%3*40);
-        sdl_rect2.y=120;
-        sdl_rect2.w=40;
-        sdl_rect2.h=30;
+        if(ducks[i].vx>0 && ducks[i].vy==0)
+        {
+            sdl_rect2.x=130+(frames/10%3*40);
+            sdl_rect2.y=120;
+        }
+        else if(ducks[i].vx==0 && ducks[i].vy==0)
+        {
+            sdl_rect2.x=131;
+            sdl_rect2.y=238;
+        }
+        else if(ducks[i].vx==0 && ducks[i].vy>0)
+        {
+            sdl_rect2.x=178;
+            sdl_rect2.y=237;
+        }
+        sdl_rect2.w=DUCK_WIDTH;
+        sdl_rect2.h=DUCK_HEIGHT;
         sdl_rect.x=ducks[i].x;
         sdl_rect.y=ducks[i].y;
         sdl_rect.w=sdl_rect2.w;
@@ -454,31 +535,17 @@ void render()
   }
   
   // Render fired bullets
-  SDL_SetRenderDrawColor(sdl_renderer, 0xFF, 0x00, 0x00, 0xFF );  
-  for(bullet_i=first_bullet; bullet_i!=NULL; bullet_i=bullet_i->forward)
+  SDL_SetRenderDrawColor(sdl_renderer, 0x00, 0x00, 0x00, 0xFF );  
+  for(i=0; i<BULLETS_SIZE; i++)
   {
-    SDL_Rect fillRect4 = {bullet_i->x, bullet_i->y, 3, 3};
-    SDL_RenderFillRect(sdl_renderer, &fillRect4);
-    bullet_i->x+=bullet_i->vx;
-    bullet_i->y+=bullet_i->vy;
-    
-    if(bullet_i->y>SCREEN_HEIGHT || bullet_i->y<0 || bullet_i->x>SCREEN_WIDTH || bullet_i->x<0) {
-      to_remove=bullet_i;
-    }
-  }
-  
-  if(to_remove!=NULL)
-  {
-    remque(to_remove);
-    if(to_remove==first_bullet)
+    if(bullets[i].enabled)
     {
-      first_bullet=first_bullet->forward;
+        sdl_rect.x=bullets[i].x;
+        sdl_rect.y=bullets[i].y;
+        sdl_rect.w=4;
+        sdl_rect.h=4;
+        SDL_RenderFillRect(sdl_renderer, &sdl_rect);
     }
-    if(to_remove==last_bullet)
-    {
-      last_bullet=last_bullet->backward;
-    }
-    free(to_remove);
   }
       
   //Update screen
@@ -508,11 +575,11 @@ void process_input(SDL_Event *e, int *quit)
         switch(e->jbutton.button) 
         {
           // Flip hunter
-          case 1: p1_flip=(p1_flip+1)%2; break;
+          case 2: p1_flip=(p1_flip+1)%2; break;
           // Fire
-          case 2: case 5: fire(); break;
+          case 1: case 5: case 7: fire(); break;
           // Reload
-          case 0: case 4: magazine=magazine_size; break;          
+          case 0: case 4: magazine=MAGAZINE_SIZE; break;          
         }
       }
 }
