@@ -1,11 +1,12 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_mixer.h>
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
 
-#define MAGAZINE_SIZE 10
+#define MAGAZINE_SIZE 2
 #define BULLETS_SIZE 100
 #define DUCKS_SIZE 10
 #define COLLISION_MARGIN 5
@@ -69,6 +70,12 @@ SDL_Joystick *sdl_gamepad;
 //Globally used font 
 TTF_Font *number_font = NULL;
 
+// Fire sound
+Mix_Chunk *fire_chunk = NULL;
+Mix_Chunk *fire_dry_chunk = NULL;
+Mix_Chunk *cocking_chunk = NULL;
+
+// Frames count
 unsigned int frames;
 
 struct sized_texture texture_text_p1;
@@ -164,7 +171,7 @@ void init()
     }
     
     //Initialize SDL_ttf 
-    if( TTF_Init() == -1 ) 
+    if(TTF_Init()<0) 
     {
       printf( "SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError() ); 
       exit(-1);
@@ -177,6 +184,13 @@ void init()
       exit(-1);
     }
     
+    //Initialize SDL_mixer 
+    if(Mix_OpenAudio( 22050, MIX_DEFAULT_FORMAT, 2, 512 )<0) 
+    { 
+      printf( "SDL_mixer could not initialize!\n");
+      exit(-1);
+    }
+    
     //Initialize renderer color
     SDL_SetRenderDrawColor( sdl_renderer, 0xFF, 0xFF, 0xFF, 0xFF );
     
@@ -186,6 +200,10 @@ void init()
 
 void close_sdl()
 {
+  // Free sound effects
+  Mix_FreeChunk(fire_chunk);
+  Mix_FreeChunk(fire_dry_chunk);
+  
   // Destroy textures
   SDL_DestroyTexture(&texture_background);
   SDL_DestroyTexture(&texture_hunter);
@@ -207,6 +225,7 @@ void close_sdl()
   }
   
   // Exit SDL
+  Mix_CloseAudio();
   TTF_Quit();
   IMG_Quit();
   SDL_Quit();
@@ -233,6 +252,15 @@ void load_media()
   
   // Load sprites
   load_texture(&texture_sprites, "duckhunt_sprites.png");
+  
+  // Load firing chunk
+  fire_chunk = Mix_LoadWAV("firing.wav");
+  
+  // Load dry firing chunk
+  fire_dry_chunk = Mix_LoadWAV("firing_dry.wav");
+  
+  // Load cooking chunk
+  cocking_chunk = Mix_LoadWAV("cocking.wav");
     
 }
 
@@ -397,9 +425,14 @@ void fire()
             bullets[i]=current;
             bullets[i].enabled=1;
             magazine--;
+            Mix_PlayChannel(-1, fire_chunk, 0);
             break;
         }
     }
+  }
+  else
+  {
+    Mix_PlayChannel(-1, fire_dry_chunk, 0);
   }
 }
 
@@ -579,7 +612,7 @@ void process_input(SDL_Event *e, int *quit)
           // Fire
           case 1: case 5: case 7: fire(); break;
           // Reload
-          case 0: case 4: magazine=MAGAZINE_SIZE; break;          
+          case 0: case 4: Mix_PlayChannel(-1, cocking_chunk, 0); magazine=MAGAZINE_SIZE; break;          
         }
       }
 }
