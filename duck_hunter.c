@@ -8,7 +8,7 @@
 
 #define MAGAZINE_SIZE 2
 #define BULLETS_SIZE 100
-#define DUCKS_SIZE 10
+#define DUCKS_SIZE 64
 #define COLLISION_MARGIN 5
 #define DUCK_WIDTH 40
 #define DUCK_HEIGHT 30
@@ -35,7 +35,6 @@ struct duck
 {
   int enabled;
   unsigned int shoot_time;
-  unsigned int start;
   int x;
   int y;
   int vx;
@@ -58,6 +57,7 @@ void load_texture(struct sized_texture *texture, char *path);
 void process_input(SDL_Event *e, int *quit);
 void init_ball();
 void fire();
+void cock();
 
 //Screen dimension constants
 int SCREEN_WIDTH;
@@ -211,6 +211,7 @@ void close_sdl()
   // Free sound effects
   Mix_FreeChunk(fire_chunk);
   Mix_FreeChunk(fire_dry_chunk);
+  Mix_FreeChunk(quack_chunk);
   
   // Destroy textures
   SDL_DestroyTexture(&texture_background);
@@ -394,13 +395,12 @@ void init_game()
   // init ducks
   for(i=0; i<DUCKS_SIZE; i++)
   {
-    ducks[i].x=-20;
-    ducks[i].y=150;
-    ducks[i].vx=0;
+    ducks[i].x=-50-50*DUCKS_SIZE/4+50*(i/4)+25*(i%2);
+    ducks[i].y=100+50*(i%4);
+    ducks[i].vx=5;
     ducks[i].vy=0;
     ducks[i].shoot_time=0;
-    ducks[i].start=100*i+50;
-    ducks[i].enabled=0;
+    ducks[i].enabled=1;
   }
   
 }
@@ -446,25 +446,24 @@ void fire()
   }
 }
 
+void cock()
+{
+  Mix_PlayChannel(-1, cocking_chunk, 0);
+  shotgun.cocking_time=frames+30;
+}
+
 void update_game()
 {
   int i,j;
   
   // Update game
-  p1_x=p1_x+=p1_vx;
+  p1_x+=p1_vx;
   
   // update ducks
   for(i=0; i<DUCKS_SIZE; i++)
   {
     // Update ducks speed
     
-    // If is time for the duck to start
-    if(frames==ducks[i].start)
-    {
-      ducks[i].enabled=1;
-      ducks[i].vx=1;
-      ducks[i].vy=0;
-    }
     // Set speed to 0 to outscreen ducks
     if(ducks[i].x>SCREEN_WIDTH || ducks[i].y>SCREEN_HEIGHT)
     {
@@ -473,13 +472,13 @@ void update_game()
       ducks[i].vy=0;
     }
     // Shot time
-    if(ducks[i].shoot_time>0 && ducks[i].shoot_time==frames)
+    if(frames == ducks[i].shoot_time)
     {
       ducks[i].vx=0;
       ducks[i].vy=0;
     }
     // 30 frames after shot, the ducks falls
-    if(ducks[i].shoot_time>0 && frames > ducks[i].shoot_time+30)
+    if(ducks[i].shoot_time != 0 && frames == ducks[i].shoot_time+30)
     {
       ducks[i].vx=0;
       ducks[i].vy=10;
@@ -488,6 +487,12 @@ void update_game()
     // Update ducks position
     ducks[i].x+=ducks[i].vx;
     ducks[i].y+=ducks[i].vy;
+    
+    // Update shotgun status
+    if(frames == shotgun.cocking_time)
+    {
+      shotgun.magazine=MAGAZINE_SIZE;
+    }
   }
   
   // Update bullets
@@ -628,7 +633,7 @@ void process_input(SDL_Event *e, int *quit)
           // Fire
           case 1: case 5: case 7: fire(); break;
           // Reload
-          case 0: case 4: Mix_PlayChannel(-1, cocking_chunk, 0); shotgun.magazine=MAGAZINE_SIZE; break;          
+          case 0: case 4: cock(); break;          
         }
       }
 }
