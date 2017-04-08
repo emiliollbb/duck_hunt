@@ -1,5 +1,5 @@
 #OBJS specifies which files to compile as part of the project 
-OBJS = main.c 
+OBJS = duck_hunter.c 
 
 #CC specifies which compiler we're using 
 CC = gcc 
@@ -12,7 +12,7 @@ COMPILER_FLAGS = -w
 LINKER_FLAGS = -lSDL2 -lSDL2_image -lSDL2_ttf -lm
 
 #OBJ_NAME specifies the name of our exectuable 
-OBJ_NAME = main 
+OBJ_NAME = duck_hunter 
 
 #This is the target that compiles our executable 
 
