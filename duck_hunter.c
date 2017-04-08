@@ -12,6 +12,7 @@
 #define COLLISION_MARGIN 5
 #define DUCK_WIDTH 40
 #define DUCK_HEIGHT 30
+#define ANGLE_BULLET 35.0*M_PI/180.0
 
 struct sized_texture
 {
@@ -38,6 +39,11 @@ struct duck
   int y;
   int vx;
   int vy;
+};
+
+struct shot_gun
+{
+  int magazine;
 };
 
 void init();
@@ -74,6 +80,7 @@ TTF_Font *number_font = NULL;
 Mix_Chunk *fire_chunk = NULL;
 Mix_Chunk *fire_dry_chunk = NULL;
 Mix_Chunk *cocking_chunk = NULL;
+Mix_Chunk *quack_chunk = NULL;
 
 // Frames count
 unsigned int frames;
@@ -98,10 +105,10 @@ char p1_score_s[10];
 int p2_score;
 char p2_score_s[10];
 int p1_flip;
+struct shot_gun shotgun;
 float speed_bullet;
-float angle_bullet;
 struct bullet bullets[BULLETS_SIZE];
-int magazine;
+
 struct duck ducks[DUCKS_SIZE];
 
 void init()
@@ -261,6 +268,9 @@ void load_media()
   
   // Load cooking chunk
   cocking_chunk = Mix_LoadWAV("cocking.wav");
+  
+  // Load quack
+  quack_chunk = Mix_LoadWAV("quack.wav");
     
 }
 
@@ -372,8 +382,7 @@ void init_game()
   player_speed=10;
   p1_flip=0;
   speed_bullet=50.0;
-  angle_bullet=35.0*M_PI/180.0;
-  magazine=MAGAZINE_SIZE;
+  shotgun.magazine=MAGAZINE_SIZE;
   
   // Init bullets
   for(i=0; i<BULLETS_SIZE; i++)
@@ -400,21 +409,21 @@ void fire()
   struct bullet current;
   int i;
   
-  if(magazine>0)
+  if(shotgun.magazine>0)
   {
     if(!p1_flip)
     {
       current.x=p1_x+texture_hunter.width;
       current.y=p1_y;
-      current.vx=speed_bullet*cos(angle_bullet);
-      current.vy=-1.0*speed_bullet*sin(angle_bullet);
+      current.vx=speed_bullet*cos(ANGLE_BULLET);
+      current.vy=-1.0*speed_bullet*sin(ANGLE_BULLET);
     }
     else
     {
       current.x=p1_x;
       current.y=p1_y;
-      current.vx=-1.0*speed_bullet*cos(angle_bullet);
-      current.vy=-1.0*speed_bullet*sin(angle_bullet);
+      current.vx=-1.0*speed_bullet*cos(ANGLE_BULLET);
+      current.vy=-1.0*speed_bullet*sin(ANGLE_BULLET);
     }
     
     // Insert bullet in array
@@ -424,7 +433,7 @@ void fire()
         {
             bullets[i]=current;
             bullets[i].enabled=1;
-            magazine--;
+            shotgun.magazine--;
             Mix_PlayChannel(-1, fire_chunk, 0);
             break;
         }
@@ -561,7 +570,7 @@ void render()
   }
       
   // Render bullets remaining
-  for(i=0; i<magazine; i++)
+  for(i=0; i<shotgun.magazine; i++)
   {
     SDL_Rect fillRect3 = {10*i, SCREEN_HEIGHT - texture_bulllet.height-10, texture_bulllet.width, texture_bulllet.height};
     SDL_RenderCopy(sdl_renderer, texture_bulllet.texture, NULL, &fillRect3);
@@ -579,6 +588,12 @@ void render()
         sdl_rect.h=4;
         SDL_RenderFillRect(sdl_renderer, &sdl_rect);
     }
+  }
+  
+  // Play quacks
+  if(frames%90==0)
+  {
+    Mix_PlayChannel(-1, quack_chunk, 0);
   }
       
   //Update screen
@@ -612,7 +627,7 @@ void process_input(SDL_Event *e, int *quit)
           // Fire
           case 1: case 5: case 7: fire(); break;
           // Reload
-          case 0: case 4: Mix_PlayChannel(-1, cocking_chunk, 0); magazine=MAGAZINE_SIZE; break;          
+          case 0: case 4: Mix_PlayChannel(-1, cocking_chunk, 0); shotgun.magazine=MAGAZINE_SIZE; break;          
         }
       }
 }
