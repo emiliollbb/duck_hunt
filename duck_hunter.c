@@ -14,6 +14,8 @@
 #define DUCK_HEIGHT 30
 #define ANGLE_BULLET 35.0*M_PI/180.0
 #define SPEED_BULLET 50.0
+#define DUCK_SPEED 5
+#define DUCK_START_X -50
 
 struct sized_texture
 {
@@ -145,7 +147,7 @@ void init()
     else 
     { 
       //Load joystick 
-      sdl_gamepad = SDL_JoystickOpen( 0 ); 
+      sdl_gamepad = SDL_JoystickOpen(0); 
       if( sdl_gamepad == NULL ) 
       { 
         printf( "Warning: Unable to open game controller! SDL Error: %s\n", SDL_GetError() ); 
@@ -395,9 +397,9 @@ void init_game()
   // init ducks
   for(i=0; i<DUCKS_SIZE; i++)
   {
-    ducks[i].x=-50-50*DUCKS_SIZE/4+50*(i/4)+25*(i%2);
+    ducks[i].x=DUCK_START_X-50*DUCKS_SIZE/4+50*(i/4)+25*(i%2);
     ducks[i].y=100+50*(i%4);
-    ducks[i].vx=5;
+    ducks[i].vx=DUCK_SPEED;
     ducks[i].vy=0;
     ducks[i].shoot_time=0;
     ducks[i].enabled=1;
@@ -470,6 +472,11 @@ void update_game()
       ducks[i].enabled=0;
       ducks[i].vx=0;
       ducks[i].vy=0;
+    }
+    // Go araund
+    if(ducks[i].x>2*SCREEN_WIDTH)
+    {
+      ducks[i].x=DUCK_START_X;
     }
     // Shot time
     if(frames == ducks[i].shoot_time)
