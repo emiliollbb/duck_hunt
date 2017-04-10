@@ -629,14 +629,20 @@ void process_input(SDL_Event *e, int *quit)
       {
         //printf("controller: %d, axis: %d, value: %d\n", e->jaxis.which, e->jaxis.axis, e->jaxis.value);
         p1_vx=player_speed*e->jaxis.value/32767; 
+        if(p1_vx>0)
+        {
+          p1_flip=0;
+        }
+        else if(p1_vx<0)
+        {
+          p1_flip=1;
+        }
       }
       // Buttons
       else if(e->type == SDL_JOYBUTTONDOWN) 
       {
         switch(e->jbutton.button) 
         {
-          // Flip hunter
-          case 2: p1_flip=(p1_flip+1)%2; break;
           // Fire
           case 1: case 5: case 7: fire(); break;
           // Reload
