@@ -467,7 +467,7 @@ void update_game()
     // Update ducks speed
     
     // Set speed to 0 to outscreen ducks
-    if(ducks[i].x>SCREEN_WIDTH || ducks[i].y>SCREEN_HEIGHT)
+    if(ducks[i].y>SCREEN_HEIGHT)
     {
       ducks[i].enabled=0;
       ducks[i].vx=0;
