@@ -213,6 +213,7 @@ void close_sdl()
   // Free sound effects
   Mix_FreeChunk(fire_chunk);
   Mix_FreeChunk(fire_dry_chunk);
+  Mix_FreeChunk(cocking_chunk);
   Mix_FreeChunk(quack_chunk);
   
   // Destroy textures
