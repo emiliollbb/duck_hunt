@@ -50,6 +50,7 @@ struct shot_gun
 };
 
 void init();
+void close_media();
 void close_sdl();
 void sync_render();
 void update_game();
@@ -78,7 +79,7 @@ SDL_DisplayMode sdl_display_mode;
 SDL_Joystick *sdl_gamepad;
 
 //Globally used font 
-TTF_Font *number_font = NULL;
+TTF_Font *font = NULL;
 
 // Fire sound
 Mix_Chunk *fire_chunk = NULL;
@@ -89,8 +90,6 @@ Mix_Chunk *quack_chunk = NULL;
 // Frames count
 unsigned int frames;
 
-struct sized_texture texture_text_p1;
-struct sized_texture texture_text_p2;
 struct sized_texture texture_background;
 struct sized_texture texture_hunter;
 struct sized_texture texture_bulllet;
@@ -105,9 +104,7 @@ int p1_vx;
 int p2_vx;
 int player_speed;
 int p1_score;
-char p1_score_s[10];
 int p2_score;
-char p2_score_s[10];
 int p1_flip;
 struct shot_gun shotgun;
 struct bullet bullets[BULLETS_SIZE];
@@ -210,18 +207,9 @@ void init()
 
 void close_sdl()
 {
-  // Free sound effects
-  Mix_FreeChunk(fire_chunk);
-  Mix_FreeChunk(fire_dry_chunk);
-  Mix_FreeChunk(cocking_chunk);
-  Mix_FreeChunk(quack_chunk);
+  // Close media
+  close_media();
   
-  // Destroy textures
-  SDL_DestroyTexture(&texture_background);
-  SDL_DestroyTexture(&texture_hunter);
-  SDL_DestroyTexture(&texture_bulllet);
-  SDL_DestroyTexture(&texture_sprites);
-    
   //Destroy renderer  
   if(sdl_renderer!=NULL)
   {
@@ -243,11 +231,28 @@ void close_sdl()
   SDL_Quit();
 }
 
+void close_media()
+{
+  // Free sound effects
+  Mix_FreeChunk(fire_chunk);
+  Mix_FreeChunk(fire_dry_chunk);
+  Mix_FreeChunk(cocking_chunk);
+  Mix_FreeChunk(quack_chunk);
+  
+  // Destroy textures
+  SDL_DestroyTexture(&texture_background);
+  SDL_DestroyTexture(&texture_hunter);
+  SDL_DestroyTexture(&texture_bulllet);
+  SDL_DestroyTexture(&texture_sprites);
+  
+  TTF_CloseFont(font);
+}
+
 void load_media()
 {
   //Open the font 
-  number_font = TTF_OpenFont( "DSEG7Classic-Bold.ttf", 50 ); 
-  if( number_font == NULL ) 
+  font = TTF_OpenFont( "ArcadeClassic.ttf", 50 ); 
+  if( font == NULL ) 
   { 
     printf( "Failed to load lazy font! SDL_ttf Error: %s\n", TTF_GetError() );
     exit(-1);
@@ -284,7 +289,7 @@ void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text)
   //The final texture
   texture->texture = NULL;
   // Text color
-  SDL_Color textColor = { 255, 255, 255 };
+  SDL_Color textColor = { 0, 0, 0 };
 
   //Load image at specified path
   SDL_Surface *loadedSurface = TTF_RenderText_Solid( font, text, textColor );
@@ -484,6 +489,7 @@ void update_game()
     {
       ducks[i].vx=0;
       ducks[i].vy=0;
+      p1_score++;
     }
     // 30 frames after shot, the ducks falls
     if(ducks[i].shoot_time != 0 && frames == ducks[i].shoot_time+30)
@@ -538,6 +544,9 @@ void render()
   SDL_Rect sdl_rect;
   SDL_Rect sdl_rect2;
   int i;
+  struct sized_texture texture_text_p1;
+  struct sized_texture texture_text_p2;
+  char p1_score_s[5];
   
   //Clear screen
   SDL_SetRenderDrawColor( sdl_renderer, 0x00, 0x00, 0x00, 0xFF );
@@ -582,13 +591,6 @@ void render()
         SDL_RenderCopy(sdl_renderer, texture_sprites.texture, &sdl_rect2, &sdl_rect);
       }
   }
-      
-  // Render bullets remaining
-  for(i=0; i<shotgun.magazine; i++)
-  {
-    SDL_Rect fillRect3 = {10*i, SCREEN_HEIGHT - texture_bulllet.height-10, texture_bulllet.width, texture_bulllet.height};
-    SDL_RenderCopy(sdl_renderer, texture_bulllet.texture, NULL, &fillRect3);
-  }
   
   // Render fired bullets
   SDL_SetRenderDrawColor(sdl_renderer, 0x00, 0x00, 0x00, 0xFF );  
@@ -603,6 +605,36 @@ void render()
         SDL_RenderFillRect(sdl_renderer, &sdl_rect);
     }
   }
+      
+  // Render bullets remaining
+  for(i=0; i<shotgun.magazine; i++)
+  {
+    sdl_rect.x=10*i;
+    sdl_rect.y=SCREEN_HEIGHT - texture_bulllet.height-10;
+    sdl_rect.w=texture_bulllet.width;
+    sdl_rect.h=texture_bulllet.height;  
+    SDL_RenderCopy(sdl_renderer, texture_bulllet.texture, NULL, &sdl_rect);
+  }
+  
+  // Render ducks counter
+  sdl_rect.x=130;
+  sdl_rect.y=120;
+  sdl_rect.w=DUCK_WIDTH;
+  sdl_rect.h=DUCK_HEIGHT;
+  sdl_rect2.x=60;
+  sdl_rect2.y=SCREEN_HEIGHT - DUCK_HEIGHT - 10;
+  sdl_rect2.w=DUCK_WIDTH;
+  sdl_rect2.h=DUCK_HEIGHT;
+  SDL_RenderCopy(sdl_renderer, texture_sprites.texture, &sdl_rect, &sdl_rect2);
+  sprintf(p1_score_s, "%02d", p1_score);
+  loadTFTTexture(&texture_text_p1, font, p1_score_s);
+  sdl_rect.x=100;
+  sdl_rect.y=SCREEN_HEIGHT - 49;
+  sdl_rect.w=texture_text_p1.width;
+  sdl_rect.h=texture_text_p1.height;  
+  SDL_RenderCopy(sdl_renderer, texture_text_p1.texture, NULL, &sdl_rect);
+  SDL_DestroyTexture(&texture_text_p1);
+  
   
   // Play quacks
   if(frames%90==0)
