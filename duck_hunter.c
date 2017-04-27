@@ -6,6 +6,7 @@
 #include <time.h>
 #include <math.h>
 
+#define FULL_SCREEN 0
 #define MAGAZINE_SIZE 2
 #define BULLETS_SIZE 100
 #define DUCKS_SIZE 10
@@ -55,8 +56,9 @@ void close_sdl();
 void sync_render();
 void update_game();
 void render();
-void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text);
+void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text, SDL_Color color);
 void load_texture(struct sized_texture *texture, char *path);
+TTF_Font* load_font(char *font_path, int size);
 void process_input(SDL_Event *e, int *quit);
 void init_ball();
 void fire();
@@ -79,7 +81,8 @@ SDL_DisplayMode sdl_display_mode;
 SDL_Joystick *sdl_gamepad;
 
 //Globally used font 
-TTF_Font *font = NULL;
+TTF_Font *font_small = NULL;
+TTF_Font *font_big = NULL;
 
 // Fire sound
 Mix_Chunk *fire_chunk = NULL;
@@ -152,21 +155,28 @@ void init()
       } 
       
     }
-
-    // Get display mode
-    if (SDL_GetDesktopDisplayMode(0, &sdl_display_mode) != 0) {
-      printf("SDL_GetDesktopDisplayMode failed: %s", SDL_GetError());
-      exit(-1);
-    }
-    SCREEN_WIDTH=sdl_display_mode.w;
-    SCREEN_HEIGHT=sdl_display_mode.h;
     
-    //Create window
-    sdl_window = SDL_CreateWindow("Duck_hunter", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_FULLSCREEN );
-    if( sdl_window == NULL )
+    if(FULL_SCREEN)
     {
-      printf( "Window could not be created! SDL Error: %s\n", SDL_GetError() );
-      exit(-1);
+      // Get display mode
+      if (SDL_GetDesktopDisplayMode(0, &sdl_display_mode) != 0) {
+	printf("SDL_GetDesktopDisplayMode failed: %s", SDL_GetError());
+	exit(-1);
+      }
+      SCREEN_WIDTH=sdl_display_mode.w;
+      SCREEN_HEIGHT=sdl_display_mode.h;
+      
+      //Create window
+      sdl_window = SDL_CreateWindow("Duck_hunter", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_FULLSCREEN);
+      if( sdl_window == NULL )
+      {
+	printf( "Window could not be created! SDL Error: %s\n", SDL_GetError() );
+	exit(-1);
+      }
+    }
+    else
+    {
+      sdl_window = SDL_CreateWindow("Duck_hunter", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
     }
     
     //Create renderer for window
@@ -231,60 +241,49 @@ void close_sdl()
   SDL_Quit();
 }
 
-void close_media()
+void load_texture(struct sized_texture *texture, char *path)
 {
-  // Free sound effects
-  Mix_FreeChunk(fire_chunk);
-  Mix_FreeChunk(fire_dry_chunk);
-  Mix_FreeChunk(cocking_chunk);
-  Mix_FreeChunk(quack_chunk);
-  
-  // Destroy textures
-  SDL_DestroyTexture(&texture_background);
-  SDL_DestroyTexture(&texture_hunter);
-  SDL_DestroyTexture(&texture_bulllet);
-  SDL_DestroyTexture(&texture_sprites);
-  
-  TTF_CloseFont(font);
+  // Aux surface
+  SDL_Surface* loadedSurface;
+
+  //Load image at specified path
+  loadedSurface = IMG_Load(path);
+  if(loadedSurface == NULL )
+  {
+    printf( "Unable to load image %s! SDL_image Error: %s\n", path, IMG_GetError() );
+    exit(-1);
+  }
+  //Get image dimensions 
+  texture->width = loadedSurface->w; 
+  texture->height = loadedSurface->h;
+  //Create texture from surface pixels
+  texture->texture = SDL_CreateTextureFromSurface(sdl_renderer, loadedSurface);
+  if( texture->texture == NULL )
+  {
+    printf( "Unable to create texture from %s! SDL Error: %s\n", path, SDL_GetError() );
+  }
+
+  //Get rid of old loaded surface
+  SDL_FreeSurface(loadedSurface);
+
 }
 
-void load_media()
+TTF_Font* load_font(char *font_path, int size)
 {
+  TTF_Font *font;
+  
   //Open the font 
-  font = TTF_OpenFont( "ArcadeClassic.ttf", 50 ); 
+  font = TTF_OpenFont(font_path, size); 
   if( font == NULL ) 
   { 
-    printf( "Failed to load lazy font! SDL_ttf Error: %s\n", TTF_GetError() );
+    printf( "Failed to load lazy font! SDL_ttf Error: %s\n", TTF_GetError());
     exit(-1);
   }
   
-  //Load background 
-  load_texture(&texture_background, "field.png"); 
-  
-  //Load hunter 
-  load_texture(&texture_hunter, "hunter.png"); 
-  
-  //Load bullet 
-  load_texture(&texture_bulllet, "bullet.png");
-  
-  // Load sprites
-  load_texture(&texture_sprites, "duckhunt_sprites.png");
-  
-  // Load firing chunk
-  fire_chunk = Mix_LoadWAV("firing.wav");
-  
-  // Load dry firing chunk
-  fire_dry_chunk = Mix_LoadWAV("firing_dry.wav");
-  
-  // Load cooking chunk
-  cocking_chunk = Mix_LoadWAV("cocking.wav");
-  
-  // Load quack
-  quack_chunk = Mix_LoadWAV("quack.wav");
-    
+  return font;
 }
 
-void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text)
+void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text, SDL_Color color)
 {
   //The final texture
   texture->texture = NULL;
@@ -321,33 +320,6 @@ void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text)
 
 }
 
-void load_texture(struct sized_texture *texture, char *path)
-{
-  // Aux surface
-  SDL_Surface* loadedSurface;
-
-  //Load image at specified path
-  loadedSurface = IMG_Load(path);
-  if(loadedSurface == NULL )
-  {
-    printf( "Unable to load image %s! SDL_image Error: %s\n", path, IMG_GetError() );
-    exit(-1);
-  }
-  //Get image dimensions 
-  texture->width = loadedSurface->w; 
-  texture->height = loadedSurface->h;
-  //Create texture from surface pixels
-  texture->texture = SDL_CreateTextureFromSurface(sdl_renderer, loadedSurface);
-  if( texture->texture == NULL )
-  {
-    printf( "Unable to create texture from %s! SDL Error: %s\n", path, SDL_GetError() );
-  }
-
-  //Get rid of old loaded surface
-  SDL_FreeSurface(loadedSurface);
-
-}
-
 void sync_render()
 {
   unsigned int ticks; 
@@ -376,7 +348,96 @@ void sync_render()
     printf("%d remaining!!!\n", remaining);
   }
 
-}  
+}
+
+int main( int argc, char* args[] )
+{
+  //Main loop flag
+  int quit=0;
+  
+  //Event handler
+  SDL_Event e;
+  
+  // Initialize random seed
+  srand(time(NULL));
+  
+  
+  // Start up SDL and create window
+  init();
+  
+  // Load Media
+  load_media();
+  
+  // Init game data
+  init_game();
+  
+  // Main game loop
+  while(!quit)
+  {
+    //Handle events on queue
+    while( SDL_PollEvent( &e ) != 0 )
+    {
+      process_input(&e, &quit);
+    }
+    // Render
+    sync_render();
+  }
+
+
+  close_sdl();
+  return 0;
+}
+
+void load_media()
+{ 
+  //Load background 
+  load_texture(&texture_background, "field.png"); 
+  
+  //Load hunter 
+  load_texture(&texture_hunter, "hunter.png"); 
+  
+  //Load bullet 
+  load_texture(&texture_bulllet, "bullet.png");
+  
+  // Load sprites
+  load_texture(&texture_sprites, "duckhunt_sprites.png");
+  
+  // Load firing chunk
+  fire_chunk = Mix_LoadWAV("firing.wav");
+  
+  // Load dry firing chunk
+  fire_dry_chunk = Mix_LoadWAV("firing_dry.wav");
+  
+  // Load cooking chunk
+  cocking_chunk = Mix_LoadWAV("cocking.wav");
+  
+  // Load quack
+  quack_chunk = Mix_LoadWAV("quack.wav");
+  
+  // Load small font
+  font_small = load_font("ArcadeClassic.ttf", 50);
+  
+  // Load big font
+  font_big = load_font("ArcadeClassic.ttf", 200);  
+}
+
+void close_media()
+{
+  // Free sound effects
+  Mix_FreeChunk(fire_chunk);
+  Mix_FreeChunk(fire_dry_chunk);
+  Mix_FreeChunk(cocking_chunk);
+  Mix_FreeChunk(quack_chunk);
+  
+  // Destroy textures
+  SDL_DestroyTexture(&texture_background);
+  SDL_DestroyTexture(&texture_hunter);
+  SDL_DestroyTexture(&texture_bulllet);
+  SDL_DestroyTexture(&texture_sprites);
+  
+  TTF_CloseFont(font_small);
+  TTF_CloseFont(font_big);
+}
 
 void init_game()
 {
@@ -393,7 +454,7 @@ void init_game()
   p1_flip=0;
   shotgun.magazine=MAGAZINE_SIZE;
   shotgun.cocking_time=0;
-  game_over=1;
+  game_over=0;
   
   // Init bullets
   for(i=0; i<BULLETS_SIZE; i++)
@@ -418,6 +479,8 @@ void fire()
 {
   struct bullet current;
   int i;
+  
+  if(game_over) return;
   
   if(shotgun.magazine>0)
   {
@@ -457,13 +520,16 @@ void fire()
 
 void cock()
 {
+  if(game_over) return;
   Mix_PlayChannel(-1, cocking_chunk, 0);
   shotgun.cocking_time=frames+30;
 }
 
 void update_game()
 {
-  int i,j;
+  int i,j, all_ducks_disabled;
+
+  if(game_over) return;
   
   // Update game
   p1_x+=p1_vx;
@@ -480,7 +546,7 @@ void update_game()
       ducks[i].vx=0;
       ducks[i].vy=0;
     }
-    // Go araund
+    // Disable outscreen ducks
     if(ducks[i].x>SCREEN_WIDTH)
     {
       ducks[i].enabled=0;
@@ -538,12 +604,28 @@ void update_game()
       }
     }
   }
+  
+  // Check if end of game
+  all_ducks_disabled=1;
+  for(i=0; i<DUCKS_SIZE; i++)
+  {
+    if(ducks[i].enabled)
+    {
+      all_ducks_disabled=0;
+      break;
+    }
+  }
+  if(all_ducks_disabled)
+  {
+    game_over=1;
+  }
 }
 
 void render()
 {
   SDL_Rect sdl_rect;
   SDL_Rect sdl_rect2;
+  SDL_Color sdl_color;
   int i;
   struct sized_texture texture_text_p1;
   struct sized_texture texture_text_p2;
@@ -619,6 +701,10 @@ void render()
   }
   
   // Render ducks counter
+  sdl_color.r=0;
+  sdl_color.g=0;
+  sdl_color.b=0;
+  sdl_color.a=255;
   sdl_rect.x=130;
   sdl_rect.y=120;
   sdl_rect.w=DUCK_WIDTH;
@@ -629,7 +715,7 @@ void render()
   sdl_rect2.h=DUCK_HEIGHT;
   SDL_RenderCopy(sdl_renderer, texture_sprites.texture, &sdl_rect, &sdl_rect2);
   sprintf(p1_score_s, "%02d", p1_score);
-  loadTFTTexture(&texture_text_p1, font, p1_score_s);
+  loadTFTTexture(&texture_text_p1, font_small, p1_score_s, sdl_color);
   sdl_rect.x=100;
   sdl_rect.y=SCREEN_HEIGHT - 49;
   sdl_rect.w=texture_text_p1.width;
@@ -641,9 +727,9 @@ void render()
   // Render game game  over
   if(game_over)
   {
-    loadTFTTexture(&texture_game_over, font, "GAME OVER");
-    sdl_rect.x=0;
-    sdl_rect.y=0;//SCREEN_HEIGHT - 49;
+    loadTFTTexture(&texture_game_over, font_big, "GAME OVER", sdl_color);
+    sdl_rect.x=SCREEN_WIDTH/2-texture_game_over.width/2;
+    sdl_rect.y=SCREEN_HEIGHT/2-texture_game_over.height/2;
     sdl_rect.w=texture_game_over.width;
     sdl_rect.h=texture_game_over.height;  
     SDL_RenderCopy(sdl_renderer, texture_game_over.texture, NULL, &sdl_rect);
@@ -651,7 +737,7 @@ void render()
   }
   
   // Play quacks
-  if(frames%90==0)
+  if(!game_over && frames%90==0)
   {
     Mix_PlayChannel(-1, quack_chunk, 0);
   }
@@ -698,43 +784,7 @@ void process_input(SDL_Event *e, int *quit)
       }
 }
 
-int main( int argc, char* args[] )
-{
-  //Main loop flag
-  int quit=0;
-  
-  //Event handler
-  SDL_Event e;
-  
-  // Initialize random seed
-  srand(time(NULL));
-  
-  
-  // Start up SDL and create window
-  init();
-  
-  // Load Media
-  load_media();
-  
-  // Init game data
-  init_game();
-  
-  // Main game loop
-  while(!quit)
-  {
-    //Handle events on queue
-    while( SDL_PollEvent( &e ) != 0 )
-    {
-      process_input(&e, &quit);
-    }
-    // Render
-    sync_render();
-  }
 
-
-  close_sdl();
-  return 0;
-}
   
   
   
