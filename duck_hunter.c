@@ -7,14 +7,14 @@
 #include <math.h>
 
 #define FULL_SCREEN 1
-#define MAGAZINE_SIZE 2
+#define MAGAZINE_SIZE 4
 #define BULLETS_SIZE 100
 #define DUCKS_SIZE 10
 #define COLLISION_MARGIN 0
 #define DUCK_WIDTH 40
 #define DUCK_HEIGHT 30
 #define ANGLE_BULLET 35.0*M_PI/180.0
-#define SPEED_BULLET 50.0
+#define SPEED_BULLET 100.0
 #define DUCK_SPEED 5
 #define DUCK_START_X 0
 
@@ -63,6 +63,7 @@ void process_input(SDL_Event *e, int *quit);
 void init_ball();
 void fire();
 void cock();
+void start();
 
 //Screen dimension constants
 int SCREEN_WIDTH;
@@ -504,7 +505,7 @@ void fire()
   {
     if(!p1_flip)
     {
-      current.x=p1_x+texture_hunter.width;
+      current.x=p1_x+hunter_width;
       current.y=p1_y;
       current.vx=SPEED_BULLET*cos(ANGLE_BULLET);
       current.vy=-1.0*SPEED_BULLET*sin(ANGLE_BULLET);
@@ -541,6 +542,14 @@ void cock()
   if(game_over) return;
   Mix_PlayChannel(-1, cocking_chunk, 0);
   shotgun.cocking_time=frames+30;
+}
+
+void start()
+{
+  if(game_over)
+  {
+    init_game();
+  }
 }
 
 void update_game()
@@ -614,8 +623,8 @@ void update_game()
     for(j=0; j<DUCKS_SIZE; j++)
     {
       if(bullets[i].enabled && ducks[j].enabled &&
-        bullets[i].x>ducks[j].x+COLLISION_MARGIN && bullets[i].x<ducks[j].x+DUCK_WIDTH-COLLISION_MARGIN
-        && bullets[i].y>ducks[j].y+COLLISION_MARGIN && bullets[i].y<ducks[j].y+DUCK_HEIGHT-COLLISION_MARGIN)
+        bullets[i].x>ducks[j].x+COLLISION_MARGIN && bullets[i].x<ducks[j].x+duck_width-COLLISION_MARGIN
+        && bullets[i].y>ducks[j].y+COLLISION_MARGIN && bullets[i].y<ducks[j].y+duck_height-COLLISION_MARGIN)
       {
         ducks[j].shoot_time=frames+1;
         bullets[i].enabled=0;
@@ -797,7 +806,8 @@ void process_input(SDL_Event *e, int *quit)
           // Fire
           case 1: case 5: case 7: fire(); break;
           // Reload
-          case 0: case 4: cock(); break;          
+          case 0: case 4: cock(); break;
+	  case 9: start(); break;
         }
       }
 }
