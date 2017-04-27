@@ -59,15 +59,21 @@ void render();
 void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text, SDL_Color color);
 void load_texture(struct sized_texture *texture, char *path);
 TTF_Font* load_font(char *font_path, int size);
-void process_input(SDL_Event *e, int *quit);
+void process_input(SDL_Event *e);
 void init_ball();
 void fire();
 void cock();
-void start();
+void start_button();
+void select_button();
 
 //Screen dimension constants
 int SCREEN_WIDTH;
 int SCREEN_HEIGHT;
+
+// quit flag
+int quit=0;
+
+int pause;
 
 //The window we'll be rendering to
 SDL_Window *sdl_window;
@@ -357,11 +363,11 @@ void sync_render()
 
 int main( int argc, char* args[] )
 {
-  //Main loop flag
-  int quit=0;
-  
   //Event handler
   SDL_Event e;
+  
+  // Init quit flag
+  quit=0;
   
   // Initialize random seed
   srand(time(NULL));
@@ -382,7 +388,7 @@ int main( int argc, char* args[] )
     //Handle events on queue
     while( SDL_PollEvent( &e ) != 0 )
     {
-      process_input(&e, &quit);
+      process_input(&e);
     }
     // Render
     sync_render();
@@ -474,6 +480,7 @@ void init_game()
   shotgun.magazine=MAGAZINE_SIZE;
   shotgun.cocking_time=0;
   game_over=0;
+  pause=0;
   
   // Init bullets
   for(i=0; i<BULLETS_SIZE; i++)
@@ -540,15 +547,28 @@ void fire()
 void cock()
 {
   if(game_over) return;
+  shotgun.magazine=0;
   Mix_PlayChannel(-1, cocking_chunk, 0);
   shotgun.cocking_time=frames+30;
 }
 
-void start()
+void start_button()
 {
   if(game_over)
   {
     init_game();
+  }
+  else
+  {
+    pause=!pause;
+  }
+}
+
+void select_button()
+{
+  if(game_over || pause)
+  {
+    quit=1;
   }
 }
 
@@ -556,7 +576,7 @@ void update_game()
 {
   int i,j, all_ducks_disabled;
 
-  if(game_over) return;
+  if(game_over || pause) return;
   
   // Update game
   p1_x+=p1_vx;
@@ -763,6 +783,18 @@ void render()
     SDL_DestroyTexture(&texture_game_over);
   }
   
+  // Render pause
+  if(pause)
+  {
+    loadTFTTexture(&texture_game_over, font_big, "PAUSE", sdl_color);
+    sdl_rect.x=SCREEN_WIDTH/2-texture_game_over.width/2;
+    sdl_rect.y=SCREEN_HEIGHT/2-texture_game_over.height/2;
+    sdl_rect.w=texture_game_over.width;
+    sdl_rect.h=texture_game_over.height;  
+    SDL_RenderCopy(sdl_renderer, texture_game_over.texture, NULL, &sdl_rect);
+    SDL_DestroyTexture(&texture_game_over);
+  }
+  
   // Play quacks
   if(!game_over && frames%90==0)
   {
@@ -773,16 +805,15 @@ void render()
   SDL_RenderPresent(sdl_renderer);
 }
 
-void process_input(SDL_Event *e, int *quit)
+void process_input(SDL_Event *e)
 {
     //User requests quit
       if(e->type == SDL_QUIT 
           // User press ESC or q
           || e->type == SDL_KEYDOWN && (e->key.keysym.sym=='q' || e->key.keysym.sym == 27)
-          // User 1 press select
-          || e->type == SDL_JOYBUTTONDOWN && e->jbutton.button == 8)
+          )
       {
-        *quit = 1;
+        quit = 1;
       }
       // Axis 0 controls player velocity
       else if(e->type == SDL_JOYAXISMOTION && e->jaxis.axis == 0)
@@ -807,7 +838,8 @@ void process_input(SDL_Event *e, int *quit)
           case 1: case 5: case 7: fire(); break;
           // Reload
           case 0: case 4: cock(); break;
-	  case 9: start(); break;
+	  case 9: start_button(); break;
+	  case 8: select_button(); break;
         }
       }
 }
