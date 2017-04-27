@@ -8,14 +8,14 @@
 
 #define MAGAZINE_SIZE 2
 #define BULLETS_SIZE 100
-#define DUCKS_SIZE 64
+#define DUCKS_SIZE 10
 #define COLLISION_MARGIN 5
 #define DUCK_WIDTH 40
 #define DUCK_HEIGHT 30
 #define ANGLE_BULLET 35.0*M_PI/180.0
 #define SPEED_BULLET 50.0
 #define DUCK_SPEED 5
-#define DUCK_START_X -50
+#define DUCK_START_X 0
 
 struct sized_texture
 {
@@ -108,8 +108,8 @@ int p2_score;
 int p1_flip;
 struct shot_gun shotgun;
 struct bullet bullets[BULLETS_SIZE];
-
 struct duck ducks[DUCKS_SIZE];
+int game_over;
 
 void init()
 {
@@ -393,6 +393,7 @@ void init_game()
   p1_flip=0;
   shotgun.magazine=MAGAZINE_SIZE;
   shotgun.cocking_time=0;
+  game_over=1;
   
   // Init bullets
   for(i=0; i<BULLETS_SIZE; i++)
@@ -403,8 +404,8 @@ void init_game()
   // init ducks
   for(i=0; i<DUCKS_SIZE; i++)
   {
-    ducks[i].x=DUCK_START_X-50*DUCKS_SIZE/4+50*(i/4)+25*(i%2);
-    ducks[i].y=100+50*(i%4);
+    ducks[i].x=DUCK_START_X-300*i-450*(i%2);
+    ducks[i].y=100+50*(i%2);
     ducks[i].vx=DUCK_SPEED;
     ducks[i].vy=0;
     ducks[i].shoot_time=0;
@@ -480,9 +481,9 @@ void update_game()
       ducks[i].vy=0;
     }
     // Go araund
-    if(ducks[i].x>2*SCREEN_WIDTH)
+    if(ducks[i].x>SCREEN_WIDTH)
     {
-      ducks[i].x=DUCK_START_X;
+      ducks[i].enabled=0;
     }
     // Shot time
     if(frames == ducks[i].shoot_time)
@@ -547,6 +548,7 @@ void render()
   struct sized_texture texture_text_p1;
   struct sized_texture texture_text_p2;
   char p1_score_s[5];
+  struct sized_texture texture_game_over;
   
   //Clear screen
   SDL_SetRenderDrawColor( sdl_renderer, 0x00, 0x00, 0x00, 0xFF );
@@ -635,6 +637,18 @@ void render()
   SDL_RenderCopy(sdl_renderer, texture_text_p1.texture, NULL, &sdl_rect);
   SDL_DestroyTexture(&texture_text_p1);
   
+  
+  // Render game game  over
+  if(game_over)
+  {
+    loadTFTTexture(&texture_game_over, font, "GAME OVER");
+    sdl_rect.x=0;
+    sdl_rect.y=0;//SCREEN_HEIGHT - 49;
+    sdl_rect.w=texture_game_over.width;
+    sdl_rect.h=texture_game_over.height;  
+    SDL_RenderCopy(sdl_renderer, texture_game_over.texture, NULL, &sdl_rect);
+    SDL_DestroyTexture(&texture_game_over);
+  }
   
   // Play quacks
   if(frames%90==0)
