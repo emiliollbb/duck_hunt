@@ -576,8 +576,8 @@ void update_game()
       ducks[i].vy=0;
       p1_score++;
     }
-    // 30 frames after shot, the ducks falls
-    if(ducks[i].shoot_time != 0 && frames == ducks[i].shoot_time+30)
+    // 10 frames after shot, the ducks falls
+    if(ducks[i].shoot_time != 0 && frames == ducks[i].shoot_time+10)
     {
       ducks[i].vx=0;
       ducks[i].vy=10;
