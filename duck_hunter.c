@@ -6,11 +6,11 @@
 #include <time.h>
 #include <math.h>
 
-#define FULL_SCREEN 0
+#define FULL_SCREEN 1
 #define MAGAZINE_SIZE 2
 #define BULLETS_SIZE 100
 #define DUCKS_SIZE 10
-#define COLLISION_MARGIN 5
+#define COLLISION_MARGIN 0
 #define DUCK_WIDTH 40
 #define DUCK_HEIGHT 30
 #define ANGLE_BULLET 35.0*M_PI/180.0
@@ -113,6 +113,10 @@ struct shot_gun shotgun;
 struct bullet bullets[BULLETS_SIZE];
 struct duck ducks[DUCKS_SIZE];
 int game_over;
+int hunter_height;
+int hunter_width;
+int duck_height;
+int duck_width;
 
 void init()
 {
@@ -418,7 +422,7 @@ void load_media()
   font_small = load_font("ArcadeClassic.ttf", 50);
   
   // Load big font
-  font_big = load_font("ArcadeClassic.ttf", 200);  
+  font_big = load_font("ArcadeClassic.ttf", 100);  
 }
 
 void close_media()
@@ -442,9 +446,23 @@ void close_media()
 void init_game()
 {
   int i;
+  
+  if(SCREEN_WIDTH>720)
+  {
+    hunter_height=2*texture_hunter.height;
+    hunter_width=2*texture_hunter.width;
+    duck_height=2*DUCK_HEIGHT;
+    duck_width=2*DUCK_WIDTH;
+  }
+  else
+  {
+    hunter_height=texture_hunter.height;
+    hunter_width=texture_hunter.width;
+  }
+  
   p1_x=10;
   p2_x=SCREEN_WIDTH-10;
-  p1_y=SCREEN_HEIGHT-texture_hunter.height-40;
+  p1_y=SCREEN_HEIGHT-hunter_height-40;
   p2_y=0;
   p1_vx=0;
   p2_vx=0;
@@ -465,8 +483,8 @@ void init_game()
   // init ducks
   for(i=0; i<DUCKS_SIZE; i++)
   {
-    ducks[i].x=DUCK_START_X-300*i-450*(i%2);
-    ducks[i].y=100+50*(i%2);
+    ducks[i].x=DUCK_START_X-300*i-200*(i%2);
+    ducks[i].y=50+50*(i%2);
     ducks[i].vx=DUCK_SPEED;
     ducks[i].vy=0;
     ducks[i].shoot_time=0;
@@ -642,8 +660,8 @@ void render()
   // Render hunter
   sdl_rect.x=p1_x;
   sdl_rect.y=p1_y;
-  sdl_rect.w=texture_hunter.width;
-  sdl_rect.h=texture_hunter.height;
+  sdl_rect.w=hunter_width;
+  sdl_rect.h=hunter_height;
   SDL_RenderCopyEx(sdl_renderer, texture_hunter.texture, NULL, &sdl_rect, 0.0, NULL, p1_flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
   
   // Render ducks
@@ -653,26 +671,26 @@ void render()
       {
         if(ducks[i].vx>0 && ducks[i].vy==0)
         {
-            sdl_rect2.x=130+(frames/10%3*40);
-            sdl_rect2.y=120;
+            sdl_rect.x=130+(frames/10%3*40);
+            sdl_rect.y=120;
         }
         else if(ducks[i].vx==0 && ducks[i].vy==0)
         {
-            sdl_rect2.x=131;
-            sdl_rect2.y=238;
+            sdl_rect.x=131;
+            sdl_rect.y=238;
         }
         else if(ducks[i].vx==0 && ducks[i].vy>0)
         {
-            sdl_rect2.x=178;
-            sdl_rect2.y=237;
+            sdl_rect.x=178;
+            sdl_rect.y=237;
         }
-        sdl_rect2.w=DUCK_WIDTH;
-        sdl_rect2.h=DUCK_HEIGHT;
-        sdl_rect.x=ducks[i].x;
-        sdl_rect.y=ducks[i].y;
-        sdl_rect.w=sdl_rect2.w;
-        sdl_rect.h=sdl_rect2.h;      
-        SDL_RenderCopy(sdl_renderer, texture_sprites.texture, &sdl_rect2, &sdl_rect);
+        sdl_rect.w=DUCK_WIDTH;
+        sdl_rect.h=DUCK_HEIGHT;
+        sdl_rect2.x=ducks[i].x;
+        sdl_rect2.y=ducks[i].y;
+        sdl_rect2.w=duck_width;
+        sdl_rect2.h=duck_height;      
+        SDL_RenderCopy(sdl_renderer, texture_sprites.texture, &sdl_rect, &sdl_rect2);
       }
   }
   
