@@ -852,22 +852,6 @@ void process_button_down(int controller, int button)
 {
   switch(button) 
   {
-    case BUTTON_X: printf("button X\n"); break;
-    case BUTTON_Y: printf("button Y\n"); break;
-    case BUTTON_A: printf("button A\n"); break;
-    case BUTTON_B: printf("button B\n"); break;
-    
-    case BUTTON_R1: printf("button R1\n"); break;
-    case BUTTON_L1: printf("button L1\n"); break;
-    case BUTTON_R2: printf("button R2\n"); break;
-    case BUTTON_L2: printf("button L2\n"); break;
-    
-    case BUTTON_SELECT: printf("button SELECT\n"); break;
-    case BUTTON_START: printf("button START\n"); break;
-  }
-  
-  switch(button) 
-  {
     // Fire
     case BUTTON_B: case BUTTON_R1: case BUTTON_R2: fire(); break;
     // Reload
