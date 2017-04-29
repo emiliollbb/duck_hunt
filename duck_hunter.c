@@ -8,7 +8,7 @@
 #include <time.h>
 #include <math.h>
 
-#define FULL_SCREEN 0
+#define FULL_SCREEN 1
 #define BUTTON_A 1
 #define BUTTON_B 2
 #define BUTTON_X 0
@@ -45,6 +45,8 @@ unsigned int frames;
 int select_button;
 // START Button status
 int start_button;
+// Game over flag
+int game_over;
 // quit flag
 int quit;
 // Pause flag
@@ -79,6 +81,8 @@ void init()
   SCREEN_WIDTH = 720;
   SCREEN_HEIGHT = 480;
   frames = 0;
+  game_over=0;
+  pause=0;
   quit=0;
   select_button=0;
   start_button=0;
@@ -289,10 +293,13 @@ void sync_render()
   long remaining;
   
   ticks = SDL_GetTicks();
-  // Count frames
-  frames++;
-  // Update game data
-  update_game();
+  if(!game_over && !pause)
+  {
+    // Count frames
+    frames++;
+    // Update game data
+    update_game();
+  }
   // Render screen
   render();  
   
@@ -405,11 +412,10 @@ int main( int argc, char* args[] )
 #define MAGAZINE_SIZE 4
 #define BULLETS_SIZE 100
 #define DUCKS_SIZE 10
-#define COLLISION_MARGIN 0
 #define DUCK_WIDTH 40
 #define DUCK_HEIGHT 30
 #define ANGLE_BULLET 35.0*M_PI/180.0
-#define SPEED_BULLET 100.0
+#define SPEED_BULLET 40.0
 #define DUCK_SPEED 5
 #define DUCK_START_X 0
 
@@ -484,14 +490,11 @@ int p1_flip;
 struct shot_gun shotgun;
 struct bullet bullets[BULLETS_SIZE];
 struct duck ducks[DUCKS_SIZE];
-int game_over;
 int hunter_height;
 int hunter_width;
 int duck_height;
 int duck_width;
-
-
-
+double speed_bullet;
 
 
 void load_media()
@@ -555,11 +558,15 @@ void init_game()
     hunter_width=2*texture_hunter.width;
     duck_height=2*DUCK_HEIGHT;
     duck_width=2*DUCK_WIDTH;
+    speed_bullet=2*SPEED_BULLET;
   }
   else
   {
     hunter_height=texture_hunter.height;
     hunter_width=texture_hunter.width;
+    duck_height=DUCK_HEIGHT;
+    duck_width=DUCK_WIDTH;
+    speed_bullet=SPEED_BULLET;
   }
   
   p1_x=10;
@@ -574,8 +581,6 @@ void init_game()
   p1_flip=0;
   shotgun.magazine=MAGAZINE_SIZE;
   shotgun.cocking_time=0;
-  game_over=0;
-  pause=0;
   
   // Init bullets
   for(i=0; i<BULLETS_SIZE; i++)
@@ -667,8 +672,8 @@ void update_game()
     for(j=0; j<DUCKS_SIZE; j++)
     {
       if(bullets[i].enabled && ducks[j].enabled &&
-        bullets[i].x>ducks[j].x+COLLISION_MARGIN && bullets[i].x<ducks[j].x+duck_width-COLLISION_MARGIN
-        && bullets[i].y>ducks[j].y+COLLISION_MARGIN && bullets[i].y<ducks[j].y+duck_height-COLLISION_MARGIN)
+        bullets[i].x>ducks[j].x && bullets[i].x<ducks[j].x+duck_width
+        && bullets[i].y>ducks[j].y && bullets[i].y<ducks[j].y+duck_height)
       {
         ducks[j].shoot_time=frames+1;
         bullets[i].enabled=0;
@@ -878,15 +883,15 @@ void fire()
     {
       current.x=p1_x+hunter_width;
       current.y=p1_y;
-      current.vx=SPEED_BULLET*cos(ANGLE_BULLET);
-      current.vy=-1.0*SPEED_BULLET*sin(ANGLE_BULLET);
+      current.vx=speed_bullet*cos(ANGLE_BULLET);
+      current.vy=-1.0*speed_bullet*sin(ANGLE_BULLET);
     }
     else
     {
       current.x=p1_x;
       current.y=p1_y;
-      current.vx=-1.0*SPEED_BULLET*cos(ANGLE_BULLET);
-      current.vy=-1.0*SPEED_BULLET*sin(ANGLE_BULLET);
+      current.vx=-1.0*speed_bullet*cos(ANGLE_BULLET);
+      current.vy=-1.0*speed_bullet*sin(ANGLE_BULLET);
     }
     
     // Insert bullet in array
@@ -920,6 +925,8 @@ void process_start_button()
 {
   if(game_over)
   {
+    game_over=0;
+    pause=0;
     init_game();
   }
   else
@@ -930,10 +937,6 @@ void process_start_button()
 
 void process_select_button()
 {
-  if(game_over || pause)
-  {
-    quit=1;
-  }
 }
 
 
