@@ -8,7 +8,17 @@
 #include <time.h>
 #include <math.h>
 
-#define FULL_SCREEN 1
+#define FULL_SCREEN 0
+#define BUTTON_A 1
+#define BUTTON_B 2
+#define BUTTON_X 0
+#define BUTTON_Y 3
+#define BUTTON_L1 4
+#define BUTTON_R1 5
+#define BUTTON_L2 6
+#define BUTTON_R2 7
+#define BUTTON_SELECT 8
+#define BUTTON_START 9
 
 struct sized_texture
 {
@@ -31,8 +41,12 @@ SDL_DisplayMode sdl_display_mode;
 SDL_Joystick *sdl_gamepad;
 // Frames count
 unsigned int frames;
+// SELECT Button status
+int select_button;
+// START Button status
+int start_button;
 // quit flag
-int quit=0;
+int quit;
 // Pause flag
 int pause;
 
@@ -43,7 +57,7 @@ void load_texture(struct sized_texture *texture, char *path);
 TTF_Font* load_font(char *font_path, int size);
 void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text, SDL_Color color);
 void sync_render();
-
+void process_input(SDL_Event *e);
 
 
 
@@ -55,8 +69,9 @@ void close_media();
 void init_game();
 void update_game();
 void render();
-void process_input(SDL_Event *e);
-
+void process_axis(int controller, int axis, int value);
+void process_button_down(int controller, int button);
+void process_button_up(int controller, int button);
 
 /* Methods implementation */
 void init()
@@ -64,6 +79,9 @@ void init()
   SCREEN_WIDTH = 720;
   SCREEN_HEIGHT = 480;
   frames = 0;
+  quit=0;
+  select_button=0;
+  start_button=0;
   sdl_window=NULL;
   sdl_renderer = NULL;
   sdl_gamepad = NULL;
@@ -295,6 +313,54 @@ void sync_render()
 
 }
 
+void process_input(SDL_Event *e)
+{
+    //User requests quit
+      if(e->type == SDL_QUIT 
+          // User press ESC or q
+          || (e->type == SDL_KEYDOWN && (e->key.keysym.sym=='q' || e->key.keysym.sym == 27))
+          )
+      {
+        quit = 1;
+      }
+      // Axis 0 controls player velocity
+      else if(e->type == SDL_JOYAXISMOTION && e->jaxis.axis == 0)
+      {
+        //printf("controller: %d, axis: %d, value: %d\n", e->jaxis.which, e->jaxis.axis, e->jaxis.value);
+	process_axis(e->jaxis.which, e->jaxis.axis, e->jaxis.value);
+      }
+      // Buttons down
+      else if(e->type == SDL_JOYBUTTONDOWN) 
+      {
+	if(e->jbutton.button == BUTTON_SELECT)
+	{
+	  select_button=1;
+	}
+	if(e->jbutton.button == BUTTON_START)
+	{
+	  start_button=1;
+	}
+	process_button_down(e->jbutton.which, e->jbutton.button);
+      }
+      // Buttons up
+      else if(e->type == SDL_JOYBUTTONUP) 
+      {
+	if(e->jbutton.button == BUTTON_SELECT)
+	{
+	  select_button=0;
+	}
+	if(e->jbutton.button == BUTTON_START)
+	{
+	  start_button=0;
+	}
+	process_button_up(e->jbutton.which, e->jbutton.button);
+      }
+      if(start_button && select_button)
+      {
+	quit=1;
+      }
+}
+
 int main( int argc, char* args[] )
 {
   //Event handler
@@ -376,8 +442,8 @@ struct shot_gun
 void init_ball();
 void fire();
 void cock();
-void start_button();
-void select_button();
+void process_start_button();
+void process_select_button();
 
 
 
@@ -763,44 +829,57 @@ void render()
   SDL_RenderPresent(sdl_renderer);
 }
 
-void process_input(SDL_Event *e)
+
+void process_axis(int controller, int axis, int value)
 {
-    //User requests quit
-      if(e->type == SDL_QUIT 
-          // User press ESC or q
-          || (e->type == SDL_KEYDOWN && (e->key.keysym.sym=='q' || e->key.keysym.sym == 27))
-          )
-      {
-        quit = 1;
-      }
-      // Axis 0 controls player velocity
-      else if(e->type == SDL_JOYAXISMOTION && e->jaxis.axis == 0)
-      {
-        //printf("controller: %d, axis: %d, value: %d\n", e->jaxis.which, e->jaxis.axis, e->jaxis.value);
-        p1_vx=player_speed*e->jaxis.value/32767; 
-        if(p1_vx>0)
-        {
-          p1_flip=0;
-        }
-        else if(p1_vx<0)
-        {
-          p1_flip=1;
-        }
-      }
-      // Buttons
-      else if(e->type == SDL_JOYBUTTONDOWN) 
-      {
-        switch(e->jbutton.button) 
-        {
-          // Fire
-          case 1: case 5: case 7: fire(); break;
-          // Reload
-          case 0: case 4: cock(); break;
-	  case 9: start_button(); break;
-	  case 8: select_button(); break;
-        }
-      }
+  // Axis 0 controls player velocity
+  if(axis == 0)
+  {
+    //printf("controller: %d, axis: %d, value: %d\n", e->jaxis.which, e->jaxis.axis, e->jaxis.value);
+    p1_vx=player_speed*value/32767; 
+    if(p1_vx>0)
+    {
+      p1_flip=0;
+    }
+    else if(p1_vx<0)
+    {
+      p1_flip=1;
+    }
+  }
 }
+
+void process_button_down(int controller, int button)
+{
+  switch(button) 
+  {
+    case BUTTON_X: printf("button X\n"); break;
+    case BUTTON_Y: printf("button Y\n"); break;
+    case BUTTON_A: printf("button A\n"); break;
+    case BUTTON_B: printf("button B\n"); break;
+    
+    case BUTTON_R1: printf("button R1\n"); break;
+    case BUTTON_L1: printf("button L1\n"); break;
+    case BUTTON_R2: printf("button R2\n"); break;
+    case BUTTON_L2: printf("button L2\n"); break;
+    
+    case BUTTON_SELECT: printf("button SELECT\n"); break;
+    case BUTTON_START: printf("button START\n"); break;
+  }
+  
+  switch(button) 
+  {
+    // Fire
+    case BUTTON_B: case BUTTON_R1: case BUTTON_R2: fire(); break;
+    // Reload
+    case BUTTON_A: case BUTTON_L1: cock(); break;
+    case BUTTON_SELECT: process_select_button(); break;
+    case BUTTON_START: process_start_button(); break;    
+  }
+}
+void process_button_up(int controller, int button)
+{
+}
+
 
 void fire()
 {
@@ -853,7 +932,7 @@ void cock()
   shotgun.cocking_time=frames+30;
 }
 
-void start_button()
+void process_start_button()
 {
   if(game_over)
   {
@@ -865,7 +944,7 @@ void start_button()
   }
 }
 
-void select_button()
+void process_select_button()
 {
   if(game_over || pause)
   {
