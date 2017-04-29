@@ -1,3 +1,5 @@
+//--------------------------------- EMILIO'S GAME TEMPLATE --------------------------------
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
@@ -7,16 +9,6 @@
 #include <math.h>
 
 #define FULL_SCREEN 1
-#define MAGAZINE_SIZE 4
-#define BULLETS_SIZE 100
-#define DUCKS_SIZE 10
-#define COLLISION_MARGIN 0
-#define DUCK_WIDTH 40
-#define DUCK_HEIGHT 30
-#define ANGLE_BULLET 35.0*M_PI/180.0
-#define SPEED_BULLET 100.0
-#define DUCK_SPEED 5
-#define DUCK_START_X 0
 
 struct sized_texture
 {
@@ -25,106 +17,48 @@ struct sized_texture
   int height;
 };
 
-struct bullet
-{
-  int enabled;
-  int x;
-  int y;
-  int vx;
-  int vy;
-};
-
-struct duck
-{
-  int enabled;
-  unsigned int shoot_time;
-  int x;
-  int y;
-  int vx;
-  int vy;
-};
-
-struct shot_gun
-{
-  int magazine;
-  unsigned int cocking_time;
-};
-
-void init();
-void close_media();
-void close_sdl();
-void sync_render();
-void update_game();
-void render();
-void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text, SDL_Color color);
-void load_texture(struct sized_texture *texture, char *path);
-TTF_Font* load_font(char *font_path, int size);
-void process_input(SDL_Event *e);
-void init_ball();
-void fire();
-void cock();
-void start_button();
-void select_button();
-
+/* Global variables */
 //Screen dimension constants
 int SCREEN_WIDTH;
 int SCREEN_HEIGHT;
-
-// quit flag
-int quit=0;
-
-int pause;
-
 //The window we'll be rendering to
 SDL_Window *sdl_window;
-
 //The window renderer
 SDL_Renderer* sdl_renderer;
-
 // Display mode
 SDL_DisplayMode sdl_display_mode;
-
 //Game Controller 1 handler 
 SDL_Joystick *sdl_gamepad;
-
-//Globally used font 
-TTF_Font *font_small = NULL;
-TTF_Font *font_big = NULL;
-
-// Fire sound
-Mix_Chunk *fire_chunk = NULL;
-Mix_Chunk *fire_dry_chunk = NULL;
-Mix_Chunk *cocking_chunk = NULL;
-Mix_Chunk *quack_chunk = NULL;
-
 // Frames count
 unsigned int frames;
+// quit flag
+int quit=0;
+// Pause flag
+int pause;
 
-struct sized_texture texture_background;
-struct sized_texture texture_hunter;
-struct sized_texture texture_bulllet;
-struct sized_texture texture_sprites;
+/* Method already implemented */
+void init();
+void close_sdl();
+void load_texture(struct sized_texture *texture, char *path);
+TTF_Font* load_font(char *font_path, int size);
+void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text, SDL_Color color);
+void sync_render();
 
-/** GAME DATA **/
-int p1_y;
-int p2_y;
-int p1_x;
-int p2_x;
-int p1_vx;
-int p2_vx;
-int player_speed;
-int p1_score;
-int p2_score;
-int p1_flip;
-struct shot_gun shotgun;
-struct bullet bullets[BULLETS_SIZE];
-struct duck ducks[DUCKS_SIZE];
-int game_over;
-int hunter_height;
-int hunter_width;
-int duck_height;
-int duck_width;
 
+
+
+
+
+/******* Methods to implement *******/
+void load_media();
+void close_media();
+void init_game();
+void update_game();
+void render();
+void process_input(SDL_Event *e);
+
+
+/* Methods implementation */
 void init()
 {
   SCREEN_WIDTH = 720;
@@ -356,7 +290,7 @@ void sync_render()
   }
   else
   {
-    printf("%d remaining!!!\n", remaining);
+    printf("%ld remaining!!!\n", remaining);
   }
 
 }
@@ -398,6 +332,101 @@ int main( int argc, char* args[] )
   close_sdl();
   return 0;
 }
+
+//-----------------------------------------------------------------------------------------
+
+
+#define MAGAZINE_SIZE 4
+#define BULLETS_SIZE 100
+#define DUCKS_SIZE 10
+#define COLLISION_MARGIN 0
+#define DUCK_WIDTH 40
+#define DUCK_HEIGHT 30
+#define ANGLE_BULLET 35.0*M_PI/180.0
+#define SPEED_BULLET 100.0
+#define DUCK_SPEED 5
+#define DUCK_START_X 0
+
+
+struct bullet
+{
+  int enabled;
+  int x;
+  int y;
+  int vx;
+  int vy;
+};
+
+struct duck
+{
+  int enabled;
+  unsigned int shoot_time;
+  int x;
+  int y;
+  int vx;
+  int vy;
+};
+
+struct shot_gun
+{
+  int magazine;
+  unsigned int cocking_time;
+};
+
+void init_ball();
+void fire();
+void cock();
+void start_button();
+void select_button();
+
+
+
+
+
+// Fire sound
+Mix_Chunk *fire_chunk = NULL;
+Mix_Chunk *fire_dry_chunk = NULL;
+Mix_Chunk *cocking_chunk = NULL;
+Mix_Chunk *quack_chunk = NULL;
+
+
+
+struct sized_texture texture_background;
+struct sized_texture texture_hunter;
+struct sized_texture texture_bulllet;
+struct sized_texture texture_sprites;
+
+
+
+
+
+//Globally used font 
+TTF_Font *font_small = NULL;
+TTF_Font *font_big = NULL;
+
+/** GAME DATA **/
+int p1_y;
+int p2_y;
+int p1_x;
+int p2_x;
+int p1_vx;
+int p2_vx;
+int player_speed;
+int p1_score;
+int p2_score;
+int p1_flip;
+struct shot_gun shotgun;
+struct bullet bullets[BULLETS_SIZE];
+struct duck ducks[DUCKS_SIZE];
+int game_over;
+int hunter_height;
+int hunter_width;
+int duck_height;
+int duck_width;
+
+
+
+
 
 void load_media()
 { 
@@ -441,10 +470,10 @@ void close_media()
   Mix_FreeChunk(quack_chunk);
   
   // Destroy textures
-  SDL_DestroyTexture(&texture_background);
-  SDL_DestroyTexture(&texture_hunter);
-  SDL_DestroyTexture(&texture_bulllet);
-  SDL_DestroyTexture(&texture_sprites);
+  SDL_DestroyTexture(texture_background.texture);
+  SDL_DestroyTexture(texture_hunter.texture);
+  SDL_DestroyTexture(texture_bulllet.texture);
+  SDL_DestroyTexture(texture_sprites.texture);
   
   TTF_CloseFont(font_small);
   TTF_CloseFont(font_big);
@@ -499,77 +528,6 @@ void init_game()
     ducks[i].enabled=1;
   }
   
-}
-
-void fire()
-{
-  struct bullet current;
-  int i;
-  
-  if(game_over) return;
-  
-  if(shotgun.magazine>0)
-  {
-    if(!p1_flip)
-    {
-      current.x=p1_x+hunter_width;
-      current.y=p1_y;
-      current.vx=SPEED_BULLET*cos(ANGLE_BULLET);
-      current.vy=-1.0*SPEED_BULLET*sin(ANGLE_BULLET);
-    }
-    else
-    {
-      current.x=p1_x;
-      current.y=p1_y;
-      current.vx=-1.0*SPEED_BULLET*cos(ANGLE_BULLET);
-      current.vy=-1.0*SPEED_BULLET*sin(ANGLE_BULLET);
-    }
-    
-    // Insert bullet in array
-    for(i=0; i<BULLETS_SIZE; i++)
-    {
-        if(!bullets[i].enabled)
-        {
-            bullets[i]=current;
-            bullets[i].enabled=1;
-            shotgun.magazine--;
-            Mix_PlayChannel(-1, fire_chunk, 0);
-            break;
-        }
-    }
-  }
-  else
-  {
-    Mix_PlayChannel(-1, fire_dry_chunk, 0);
-  }
-}
-
-void cock()
-{
-  if(game_over) return;
-  shotgun.magazine=0;
-  Mix_PlayChannel(-1, cocking_chunk, 0);
-  shotgun.cocking_time=frames+30;
-}
-
-void start_button()
-{
-  if(game_over)
-  {
-    init_game();
-  }
-  else
-  {
-    pause=!pause;
-  }
-}
-
-void select_button()
-{
-  if(game_over || pause)
-  {
-    quit=1;
-  }
 }
 
 void update_game()
@@ -675,7 +633,7 @@ void render()
   SDL_Color sdl_color;
   int i;
   struct sized_texture texture_text_p1;
-  struct sized_texture texture_text_p2;
+//  struct sized_texture texture_text_p2;
   char p1_score_s[5];
   struct sized_texture texture_game_over;
   
@@ -768,7 +726,7 @@ void render()
   sdl_rect.w=texture_text_p1.width;
   sdl_rect.h=texture_text_p1.height;  
   SDL_RenderCopy(sdl_renderer, texture_text_p1.texture, NULL, &sdl_rect);
-  SDL_DestroyTexture(&texture_text_p1);
+  SDL_DestroyTexture(texture_text_p1.texture);
   
   
   // Render game game  over
@@ -780,7 +738,7 @@ void render()
     sdl_rect.w=texture_game_over.width;
     sdl_rect.h=texture_game_over.height;  
     SDL_RenderCopy(sdl_renderer, texture_game_over.texture, NULL, &sdl_rect);
-    SDL_DestroyTexture(&texture_game_over);
+    SDL_DestroyTexture(texture_game_over.texture);
   }
   
   // Render pause
@@ -792,7 +750,7 @@ void render()
     sdl_rect.w=texture_game_over.width;
     sdl_rect.h=texture_game_over.height;  
     SDL_RenderCopy(sdl_renderer, texture_game_over.texture, NULL, &sdl_rect);
-    SDL_DestroyTexture(&texture_game_over);
+    SDL_DestroyTexture(texture_game_over.texture);
   }
   
   // Play quacks
@@ -810,7 +768,7 @@ void process_input(SDL_Event *e)
     //User requests quit
       if(e->type == SDL_QUIT 
           // User press ESC or q
-          || e->type == SDL_KEYDOWN && (e->key.keysym.sym=='q' || e->key.keysym.sym == 27)
+          || (e->type == SDL_KEYDOWN && (e->key.keysym.sym=='q' || e->key.keysym.sym == 27))
           )
       {
         quit = 1;
@@ -843,6 +801,83 @@ void process_input(SDL_Event *e)
         }
       }
 }
+
+void fire()
+{
+  struct bullet current;
+  int i;
+  
+  if(game_over) return;
+  
+  if(shotgun.magazine>0)
+  {
+    if(!p1_flip)
+    {
+      current.x=p1_x+hunter_width;
+      current.y=p1_y;
+      current.vx=SPEED_BULLET*cos(ANGLE_BULLET);
+      current.vy=-1.0*SPEED_BULLET*sin(ANGLE_BULLET);
+    }
+    else
+    {
+      current.x=p1_x;
+      current.y=p1_y;
+      current.vx=-1.0*SPEED_BULLET*cos(ANGLE_BULLET);
+      current.vy=-1.0*SPEED_BULLET*sin(ANGLE_BULLET);
+    }
+    
+    // Insert bullet in array
+    for(i=0; i<BULLETS_SIZE; i++)
+    {
+        if(!bullets[i].enabled)
+        {
+            bullets[i]=current;
+            bullets[i].enabled=1;
+            shotgun.magazine--;
+            Mix_PlayChannel(-1, fire_chunk, 0);
+            break;
+        }
+    }
+  }
+  else
+  {
+    Mix_PlayChannel(-1, fire_dry_chunk, 0);
+  }
+}
+
+void cock()
+{
+  if(game_over) return;
+  shotgun.magazine=0;
+  Mix_PlayChannel(-1, cocking_chunk, 0);
+  shotgun.cocking_time=frames+30;
+}
+
+void start_button()
+{
+  if(game_over)
+  {
+    init_game();
+  }
+  else
+  {
+    pause=!pause;
+  }
+}
+
+void select_button()
+{
+  if(game_over || pause)
+  {
+    quit=1;
+  }
+}
+
+
+
+
+
+
 
 
   
