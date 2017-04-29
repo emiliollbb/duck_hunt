@@ -6,7 +6,7 @@ CC = gcc
 
 #COMPILER_FLAGS specifies the additional compilation options we're using 
 # -w suppresses all warnings 
-COMPILER_FLAGS = -w 
+COMPILER_FLAGS = -Wall
 
 #LINKER_FLAGS specifies the libraries we're linking against 
 LINKER_FLAGS = -lSDL2 -lSDL2_image -lSDL2_ttf -lSDL2_mixer -lm
@@ -18,4 +18,7 @@ OBJ_NAME = duck_hunter
 
 all : $(OBJS)
 	$(CC) $(OBJS) $(COMPILER_FLAGS) $(LINKER_FLAGS) -o $(OBJ_NAME)
+
+clean :
+	rm duck_hunter
 
