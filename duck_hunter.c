@@ -858,9 +858,9 @@ void process_button_down(int controller, int button)
   switch(button) 
   {
     // Fire
-    case BUTTON_B: case BUTTON_R1: case BUTTON_R2: fire(); break;
+    case BUTTON_A: case BUTTON_R1: case BUTTON_R2: fire(); break;
     // Reload
-    case BUTTON_A: case BUTTON_L1: cock(); break;
+    case BUTTON_B: case BUTTON_L1: cock(); break;
     case BUTTON_SELECT: process_select_button(); break;
     case BUTTON_START: process_start_button(); break;    
   }
