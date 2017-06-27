@@ -37,8 +37,8 @@ SDL_Window *sdl_window;
 SDL_Renderer* sdl_renderer;
 // Display mode
 SDL_DisplayMode sdl_display_mode;
-//Game Controller 1 handler 
-SDL_Joystick *sdl_gamepad;
+//Game Controllers 
+SDL_Joystick *sdl_gamepads[2];
 // Frames count
 unsigned int frames;
 // SELECT Button status
@@ -78,6 +78,8 @@ void process_button_up(int controller, int button);
 /* Methods implementation */
 void init()
 {
+  int i;
+  
   SCREEN_WIDTH = 720;
   SCREEN_HEIGHT = 480;
   frames = 0;
@@ -88,7 +90,8 @@ void init()
   start_button=0;
   sdl_window=NULL;
   sdl_renderer = NULL;
-  sdl_gamepad = NULL;
+  sdl_gamepads[0] = NULL;
+  sdl_gamepads[1] = NULL;
   
   //Initialize SDL
   if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_JOYSTICK ) < 0 )
@@ -109,17 +112,20 @@ void init()
     if( SDL_NumJoysticks() < 1 ) 
     { 
       printf( "Warning: No joysticks connected!\n" ); 
-      
     } 
     else 
-    { 
-      //Load joystick 
-      sdl_gamepad = SDL_JoystickOpen(0); 
-      if( sdl_gamepad == NULL ) 
-      { 
-        printf( "Warning: Unable to open game controller! SDL Error: %s\n", SDL_GetError() ); 
-        
-      } 
+    {
+      printf("%d joysticks connected\n", SDL_NumJoysticks());
+      for(i=0; i<SDL_NumJoysticks(); i++)
+      {
+        //Load joystick 
+        sdl_gamepads[i] = SDL_JoystickOpen(i); 
+        if(sdl_gamepads[i] == NULL ) 
+        { 
+            printf( "Warning: Unable to open game controller %d! SDL Error: %s\n", i, SDL_GetError() ); 
+            
+        }
+      }
       
     }
     
@@ -184,6 +190,8 @@ void init()
 
 void close_sdl()
 {
+  int i;
+  
   // Close media
   close_media();
   
@@ -199,6 +207,13 @@ void close_sdl()
     // Destroy window
     SDL_DestroyWindow( sdl_window );
     sdl_window=NULL;
+  }
+  
+  // Close gamepads
+  for(i=0; i<SDL_NumJoysticks(); i++)
+  {
+    SDL_JoystickClose(sdl_gamepads[i]);
+    sdl_gamepads[i]=NULL;
   }
   
   // Exit SDL
@@ -334,7 +349,7 @@ void process_input(SDL_Event *e)
       else if(e->type == SDL_JOYAXISMOTION && e->jaxis.axis == 0)
       {
         //printf("controller: %d, axis: %d, value: %d\n", e->jaxis.which, e->jaxis.axis, e->jaxis.value);
-	process_axis(e->jaxis.which, e->jaxis.axis, e->jaxis.value);
+        process_axis(e->jaxis.which, e->jaxis.axis, e->jaxis.value);
       }
       // Buttons down
       else if(e->type == SDL_JOYBUTTONDOWN) 
