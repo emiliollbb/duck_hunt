@@ -8,7 +8,7 @@
 #include <time.h>
 #include <math.h>
 
-#define FULL_SCREEN 1
+#define FULL_SCREEN 0
 #define BUTTON_A 1
 #define BUTTON_B 2
 #define BUTTON_X 0
@@ -78,8 +78,8 @@ void process_button_up(int controller, int button);
 /* Methods implementation */
 void init()
 {
-  SCREEN_WIDTH = 720;
-  SCREEN_HEIGHT = 480;
+  SCREEN_WIDTH = 1024;
+  SCREEN_HEIGHT = 600;
   frames = 0;
   game_over=0;
   pause=0;
@@ -552,7 +552,7 @@ void init_game()
 {
   int i;
   
-  if(SCREEN_WIDTH>720)
+  if(SCREEN_HEIGHT>600)
   {
     hunter_height=2*texture_hunter.height;
     hunter_width=2*texture_hunter.width;
