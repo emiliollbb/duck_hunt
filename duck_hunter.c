@@ -600,7 +600,6 @@ int p2_vx;
 int player_speed;
 int p1_score;
 int p2_score;
-int p1_flip;
 struct shot_gun shotgun;
 struct bullet bullets[BULLETS_SIZE];
 struct duck ducks[DUCKS_SIZE];
@@ -676,15 +675,14 @@ void init_game()
   }
   
   p1_x=10;
-  p2_x=SCREEN_WIDTH-10;
+  p2_x=SCREEN_WIDTH-110;
   p1_y=SCREEN_HEIGHT-hunter_height-40;
-  p2_y=0;
+  p2_y=p1_y;
   p1_vx=0;
   p2_vx=0;
   p1_score=0;
   p2_score=0;
   player_speed=10;
-  p1_flip=0;
   shotgun.magazine=MAGAZINE_SIZE;
   shotgun.cocking_time=0;
   
@@ -826,7 +824,17 @@ void render()
   sdl_rect.y=p1_y;
   sdl_rect.w=hunter_width;
   sdl_rect.h=hunter_height;
-  SDL_RenderCopyEx(sdl_renderer, texture_hunter.texture, NULL, &sdl_rect, 0.0, NULL, p1_flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
+  SDL_RenderCopyEx(sdl_renderer, texture_hunter.texture, NULL, &sdl_rect, 0.0, NULL, SDL_FLIP_NONE);
+  
+  // Render hunter p2
+  if(players==2)
+  {
+    sdl_rect.x=p2_x;
+    sdl_rect.y=p2_y;
+    sdl_rect.w=hunter_width;
+    sdl_rect.h=hunter_height;
+    SDL_RenderCopyEx(sdl_renderer, texture_hunter.texture, NULL, &sdl_rect, 0.0, NULL, SDL_FLIP_HORIZONTAL);
+  }
   
   // Render ducks
   for(i=0; i<DUCKS_SIZE; i++)
@@ -943,20 +951,6 @@ void render()
 
 void process_axis(int controller, int axis, int value)
 {
-  // Axis 0 controls player velocity
-  if(axis == 0)
-  {
-    //printf("controller: %d, axis: %d, value: %d\n", e->jaxis.which, e->jaxis.axis, e->jaxis.value);
-    p1_vx=player_speed*value/32767; 
-    if(p1_vx>0)
-    {
-      p1_flip=0;
-    }
-    else if(p1_vx<0)
-    {
-      p1_flip=1;
-    }
-  }
 }
 
 void process_button_down(int controller, int button)
@@ -985,20 +979,10 @@ void fire()
   
   if(shotgun.magazine>0)
   {
-    if(!p1_flip)
-    {
-      current.x=p1_x+hunter_width;
-      current.y=p1_y;
-      current.vx=speed_bullet*cos(ANGLE_BULLET);
-      current.vy=-1.0*speed_bullet*sin(ANGLE_BULLET);
-    }
-    else
-    {
-      current.x=p1_x;
-      current.y=p1_y;
-      current.vx=-1.0*speed_bullet*cos(ANGLE_BULLET);
-      current.vy=-1.0*speed_bullet*sin(ANGLE_BULLET);
-    }
+    current.x=p1_x+hunter_width;
+    current.y=p1_y;
+    current.vx=speed_bullet*cos(ANGLE_BULLET);
+    current.vy=-1.0*speed_bullet*sin(ANGLE_BULLET);
     
     // Insert bullet in array
     for(i=0; i<BULLETS_SIZE; i++)
