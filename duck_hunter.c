@@ -52,6 +52,12 @@ int quit;
 // Pause flag
 int pause;
 
+// Players number
+int players;
+
+// Players menu
+int players_menu;
+
 //Globally used font 
 TTF_Font *font_small = NULL;
 TTF_Font *font_medium = NULL;
@@ -66,6 +72,7 @@ TTF_Font* load_font(char *font_path, int size);
 void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text, SDL_Color color);
 void sync_render();
 void process_input(SDL_Event *e);
+void render_menu();
 
 
 /******* Methods to implement *******/
@@ -89,6 +96,8 @@ void init()
   game_over=0;
   pause=0;
   quit=0;
+  players=1;
+  players_menu=1;
   select_button=0;
   start_button=0;
   sdl_window=NULL;
@@ -285,11 +294,9 @@ void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text, S
 {
   //The final texture
   texture->texture = NULL;
-  // Text color
-  SDL_Color textColor = { 0, 0, 0 };
-  
+    
   //Load image at specified path
-  SDL_Surface *loadedSurface = TTF_RenderText_Solid( font, text, textColor );
+  SDL_Surface *loadedSurface = TTF_RenderText_Solid( font, text, color );
   if( loadedSurface == NULL )
   {
     printf( "Unable to render text! SDL_image Error: %s\n", TTF_GetError() );
@@ -324,7 +331,7 @@ void sync_render()
   long remaining;
   
   ticks = SDL_GetTicks();
-  if(!game_over && !pause)
+  if(!game_over && !pause && !players_menu)
   {
     // Count frames
     frames++;
@@ -332,7 +339,14 @@ void sync_render()
     update_game();
   }
   // Render screen
-  render();  
+  if(players_menu)
+  {
+    render_menu();
+  }
+  else
+  {
+    render();  
+  }
   
   remaining = ticks;
   //remaining = remaining + 16 - SDL_GetTicks();
@@ -398,6 +412,64 @@ void process_input(SDL_Event *e)
     quit=1;
   }
 }
+
+void render_menu()
+{
+  SDL_Rect sdl_rect;
+  struct sized_texture texture_text;
+  SDL_Color sdl_color;
+  
+  //Clear screen
+  SDL_SetRenderDrawColor( sdl_renderer, 0x00, 0x00, 0x00, 0xFF );
+  SDL_RenderClear( sdl_renderer );
+  
+  if(players==1)
+  {
+    sdl_color.r=255;
+    sdl_color.g=255;
+    sdl_color.b=255;
+    sdl_color.a=255;
+  }
+  else
+  {
+    sdl_color.r=70;
+    sdl_color.g=70;
+    sdl_color.b=70;
+    sdl_color.a=255;
+  }
+  loadTFTTexture(&texture_text, font_medium, "1 Player", sdl_color);
+  sdl_rect.x=SCREEN_WIDTH/2-texture_text.width/2;
+  sdl_rect.y=125;
+  sdl_rect.w=texture_text.width;
+  sdl_rect.h=texture_text.height;  
+  SDL_RenderCopy(sdl_renderer, texture_text.texture, NULL, &sdl_rect);
+  SDL_DestroyTexture(texture_text.texture);
+  
+  if(players==2)
+  {
+    sdl_color.r=255;
+    sdl_color.g=255;
+    sdl_color.b=255;
+    sdl_color.a=255;
+  }
+  else
+  {
+    sdl_color.r=70;
+    sdl_color.g=70;
+    sdl_color.b=70;
+    sdl_color.a=255;
+  }
+  sdl_rect.y+=100;
+  loadTFTTexture(&texture_text, font_medium, "2 Players", sdl_color);
+  sdl_rect.w=texture_text.width;
+  sdl_rect.h=texture_text.height;  
+  SDL_RenderCopy(sdl_renderer, texture_text.texture, NULL, &sdl_rect);
+  SDL_DestroyTexture(texture_text.texture);
+  
+  //Update screen
+  SDL_RenderPresent(sdl_renderer);
+}
+
 
 int main( int argc, char* args[] )
 {
