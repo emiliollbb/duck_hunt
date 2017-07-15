@@ -392,7 +392,10 @@ void process_input(SDL_Event *e)
     {
       start_button=1;
     }
-    process_button_down(e->jbutton.which, e->jbutton.button);
+    if(e->jbutton.button != BUTTON_SELECT && e->jbutton.button != BUTTON_START)
+    {
+      process_button_down(e->jbutton.which, e->jbutton.button);
+    }
   }
   // Buttons up
   else if(e->type == SDL_JOYBUTTONUP) 
@@ -405,11 +408,26 @@ void process_input(SDL_Event *e)
     {
       start_button=0;
     }
-    process_button_up(e->jbutton.which, e->jbutton.button);
+    if(e->jbutton.button != BUTTON_SELECT && e->jbutton.button != BUTTON_START)
+    {
+      process_button_up(e->jbutton.which, e->jbutton.button);
+    }
   }
   if(start_button && select_button)
   {
     quit=1;
+  }
+  if(players_menu && select_button)
+  {
+    players++;
+    if(players>2)
+    {
+      players=1;
+    }
+  }
+  if(players_menu && start_button)
+  {
+    players_menu=0;
   }
 }
 
