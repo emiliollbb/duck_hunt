@@ -431,6 +431,11 @@ void process_input(SDL_Event *e)
     // Close menu
     players_menu=0;
   }
+  if(game_over && start_button)
+  {
+    game_over=0;
+    players_menu=1;
+  }
 }
 
 void render_menu()
@@ -857,7 +862,7 @@ void render()
   {
     if(ducks[i].enabled)
     {
-      if(ducks[i].vx>0 && ducks[i].vy==0)
+      if(ducks[i].vx!=0 && ducks[i].vy==0)
       {
 	sdl_rect.x=130+(frames/10%3*40);
 	sdl_rect.y=120;
