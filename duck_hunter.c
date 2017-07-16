@@ -565,6 +565,11 @@ struct shot_gun
   unsigned int cocking_time;
 };
 
+struct hunter
+{
+  int x,y,score;
+};
+
 void init_ball();
 void fire(int);
 void cock(int);
@@ -590,15 +595,7 @@ struct sized_texture texture_sprites;
 
 
 /** GAME DATA **/
-int p1_y;
-int p2_y;
-int p1_x;
-int p2_x;
-int p1_vx;
-int p2_vx;
-int player_speed;
-int p1_score;
-int p2_score;
+struct hunter hunters[2];
 struct shot_gun shotgun[2];
 struct bullet bullets[BULLETS_SIZE];
 struct duck ducks[20];
@@ -674,15 +671,12 @@ void init_game()
     speed_bullet=SPEED_BULLET;
   }
   
-  p1_x=10;
-  p2_x=SCREEN_WIDTH-110;
-  p1_y=SCREEN_HEIGHT-hunter_height-40;
-  p2_y=p1_y;
-  p1_vx=0;
-  p2_vx=0;
-  p1_score=0;
-  p2_score=0;
-  player_speed=10;
+  hunters[0].x=10;
+  hunters[1].x=SCREEN_WIDTH-110;
+  hunters[0].y=SCREEN_HEIGHT-hunter_height-40;
+  hunters[1].y=hunters[0].y;
+  hunters[0].score=0;
+  hunters[1].score=0;
   shotgun[0].magazine=MAGAZINE_SIZE;
   shotgun[0].cocking_time=0;
   shotgun[1].magazine=MAGAZINE_SIZE;
@@ -727,9 +721,6 @@ void update_game()
   
   if(game_over || pause) return;
   
-  // Update game
-  p1_x+=p1_vx;
-  
   // update ducks
   for(i=0; i<ducks_size; i++)
   {
@@ -757,7 +748,7 @@ void update_game()
     {
       ducks[i].vx=0;
       ducks[i].vy=0;
-      p1_score++;
+      hunters[0].score++;
     }
     // 10 frames after shot, the ducks falls
     if(ducks[i].shoot_time != 0 && frames == ducks[i].shoot_time+10)
@@ -844,8 +835,8 @@ void render()
   SDL_RenderCopy(sdl_renderer, texture_background.texture, NULL, NULL);
   
   // Render hunter
-  sdl_rect.x=p1_x;
-  sdl_rect.y=p1_y;
+  sdl_rect.x=hunters[0].x;
+  sdl_rect.y=hunters[0].y;
   sdl_rect.w=hunter_width;
   sdl_rect.h=hunter_height;
   SDL_RenderCopyEx(sdl_renderer, texture_hunter.texture, NULL, &sdl_rect, 0.0, NULL, SDL_FLIP_NONE);
@@ -853,8 +844,8 @@ void render()
   // Render hunter p2
   if(players==2)
   {
-    sdl_rect.x=p2_x;
-    sdl_rect.y=p2_y;
+    sdl_rect.x=hunters[1].x;
+    sdl_rect.y=hunters[1].y;
     sdl_rect.w=hunter_width;
     sdl_rect.h=hunter_height;
     SDL_RenderCopyEx(sdl_renderer, texture_hunter.texture, NULL, &sdl_rect, 0.0, NULL, SDL_FLIP_HORIZONTAL);
@@ -938,7 +929,7 @@ void render()
   sdl_rect2.w=DUCK_WIDTH;
   sdl_rect2.h=DUCK_HEIGHT;
   SDL_RenderCopy(sdl_renderer, texture_sprites.texture, &sdl_rect, &sdl_rect2);
-  sprintf(p1_score_s, "%02d", p1_score);
+  sprintf(p1_score_s, "%02d", hunters[0].score);
   loadTFTTexture(&texture_text_p1, font_small, p1_score_s, sdl_color);
   sdl_rect.x=100;
   sdl_rect.y=SCREEN_HEIGHT - 49;
@@ -1015,9 +1006,18 @@ void fire(int player)
   
   if(shotgun[player].magazine>0)
   {
-    current.x=p1_x+hunter_width;
-    current.y=p1_y;
-    current.vx=speed_bullet*cos(ANGLE_BULLET);
+    current.y=hunters[player].y;
+    
+    if(player==0)
+    {
+      current.x=hunters[player].x + hunter_width;
+      current.vx=speed_bullet*cos(ANGLE_BULLET);
+    }    
+    else if(player==1)
+    {
+      current.x=hunters[player].x;
+      current.vx=-speed_bullet*cos(ANGLE_BULLET);
+    }
     current.vy=-1.0*speed_bullet*sin(ANGLE_BULLET);
     
     // Insert bullet in array
