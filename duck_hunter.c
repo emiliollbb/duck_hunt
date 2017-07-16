@@ -8,7 +8,7 @@
 #include <time.h>
 #include <math.h>
 
-#define FULL_SCREEN 1
+#define FULL_SCREEN 0
 #define BUTTON_A 1
 #define BUTTON_B 2
 #define BUTTON_X 0
@@ -37,8 +37,8 @@ SDL_Window *sdl_window;
 SDL_Renderer* sdl_renderer;
 // Display mode
 SDL_DisplayMode sdl_display_mode;
-//Game Controller 1 handler 
-SDL_Joystick *sdl_gamepad;
+//Game Controllers 
+SDL_Joystick *sdl_gamepads[2];
 // Frames count
 unsigned int frames;
 // SELECT Button status
@@ -52,6 +52,18 @@ int quit;
 // Pause flag
 int pause;
 
+// Players number
+int players;
+
+// Players menu
+int players_menu;
+
+//Globally used font 
+TTF_Font *font_small = NULL;
+TTF_Font *font_medium = NULL;
+TTF_Font *font_big = NULL;
+
+
 /* Method already implemented */
 void init();
 void close_sdl();
@@ -60,9 +72,7 @@ TTF_Font* load_font(char *font_path, int size);
 void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text, SDL_Color color);
 void sync_render();
 void process_input(SDL_Event *e);
-
-
-
+void render_menu();
 
 
 /******* Methods to implement *******/
@@ -78,17 +88,21 @@ void process_button_up(int controller, int button);
 /* Methods implementation */
 void init()
 {
+  int i;
   SCREEN_WIDTH = 1024;
   SCREEN_HEIGHT = 600;
   frames = 0;
   game_over=0;
   pause=0;
   quit=0;
+  players=1;
+  players_menu=1;
   select_button=0;
   start_button=0;
   sdl_window=NULL;
   sdl_renderer = NULL;
-  sdl_gamepad = NULL;
+  sdl_gamepads[0] = NULL;
+  sdl_gamepads[1] = NULL;
   
   //Initialize SDL
   if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_JOYSTICK ) < 0 )
@@ -96,96 +110,114 @@ void init()
     printf( "SDL could not initialize! SDL Error: %s\n", SDL_GetError() );
     exit(-1);
   }
-  else
+  
+  //Set texture filtering to linear
+  if( !SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" ) )
   {
-    //Set texture filtering to linear
-    if( !SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" ) )
+    printf( "Warning: Linear texture filtering not enabled!" );
+    exit(-1);
+  }
+  
+  //Check for joysticks 
+  if( SDL_NumJoysticks() < 1 ) 
+  { 
+    printf( "Warning: No joysticks connected!\n" ); 
+  } 
+  else 
+  {
+    printf("%d joysticks connected\n", SDL_NumJoysticks());
+    for(i=0; i<SDL_NumJoysticks(); i++)
     {
-      printf( "Warning: Linear texture filtering not enabled!" );
-      exit(-1);
-    }
-    
-    //Check for joysticks 
-    if( SDL_NumJoysticks() < 1 ) 
-    { 
-      printf( "Warning: No joysticks connected!\n" ); 
-      
-    } 
-    else 
-    { 
       //Load joystick 
-      sdl_gamepad = SDL_JoystickOpen(0); 
-      if( sdl_gamepad == NULL ) 
+      sdl_gamepads[i] = SDL_JoystickOpen(i); 
+      if(sdl_gamepads[i] == NULL ) 
       { 
-        printf( "Warning: Unable to open game controller! SDL Error: %s\n", SDL_GetError() ); 
-        
-      } 
-      
-    }
-    
-    if(FULL_SCREEN)
-    {
-      // Get display mode
-      if (SDL_GetDesktopDisplayMode(0, &sdl_display_mode) != 0) {
-	printf("SDL_GetDesktopDisplayMode failed: %s", SDL_GetError());
-	exit(-1);
-      }
-      SCREEN_WIDTH=sdl_display_mode.w;
-      SCREEN_HEIGHT=sdl_display_mode.h;
-      
-      //Create window
-      sdl_window = SDL_CreateWindow("Duck_hunter", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_FULLSCREEN);
-      if( sdl_window == NULL )
-      {
-	printf( "Window could not be created! SDL Error: %s\n", SDL_GetError() );
-	exit(-1);
+	printf( "Warning: Unable to open game controller %d! SDL Error: %s\n", i, SDL_GetError() ); 
+	
       }
     }
-    else
-    {
-      sdl_window = SDL_CreateWindow("Duck_hunter", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
-    }
-    
-    //Create renderer for window
-    sdl_renderer = SDL_CreateRenderer( sdl_window, -1, SDL_RENDERER_ACCELERATED );
-    if( sdl_renderer == NULL )
-    {
-      printf( "Renderer could not be created! SDL Error: %s\n", SDL_GetError() );
-      exit(-1);
-    }
-    
-    //Initialize SDL_ttf 
-    if(TTF_Init()<0) 
-    {
-      printf( "SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError() ); 
-      exit(-1);
-    }
-    
-    //Initialize PNG loading
-    if( !( IMG_Init( IMG_INIT_PNG ) & IMG_INIT_PNG ) )
-    {
-      printf( "SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError() );
-      exit(-1);
-    }
-    
-    //Initialize SDL_mixer 
-    if(Mix_OpenAudio( 22050, MIX_DEFAULT_FORMAT, 2, 512 )<0) 
-    { 
-      printf( "SDL_mixer could not initialize!\n");
-      exit(-1);
-    }
-    
-    //Initialize renderer color
-    SDL_SetRenderDrawColor( sdl_renderer, 0xFF, 0xFF, 0xFF, 0xFF );
-    
     
   }
+  
+  if(FULL_SCREEN)
+  {
+    // Get display mode
+    if (SDL_GetDesktopDisplayMode(0, &sdl_display_mode) != 0) {
+      printf("SDL_GetDesktopDisplayMode failed: %s", SDL_GetError());
+      exit(-1);
+    }
+    SCREEN_WIDTH=sdl_display_mode.w;
+    SCREEN_HEIGHT=sdl_display_mode.h;
+    
+    //Create window
+    sdl_window = SDL_CreateWindow("Duck_hunter", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_FULLSCREEN);
+    if( sdl_window == NULL )
+    {
+      printf( "Window could not be created! SDL Error: %s\n", SDL_GetError() );
+      exit(-1);
+    }
+  }
+  else
+  {
+    sdl_window = SDL_CreateWindow("Duck_hunter", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+  }
+  
+  //Create renderer for window
+  sdl_renderer = SDL_CreateRenderer( sdl_window, -1, SDL_RENDERER_ACCELERATED );
+  if( sdl_renderer == NULL )
+  {
+    printf( "Renderer could not be created! SDL Error: %s\n", SDL_GetError() );
+    exit(-1);
+  }
+  
+  //Initialize SDL_ttf 
+  if(TTF_Init()<0) 
+  {
+    printf( "SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError() ); 
+    exit(-1);
+  }
+  
+  //Initialize PNG loading
+  if( !( IMG_Init( IMG_INIT_PNG ) & IMG_INIT_PNG ) )
+  {
+    printf( "SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError() );
+    exit(-1);
+  }
+  
+  //Initialize SDL_mixer 
+  if(Mix_OpenAudio( 22050, MIX_DEFAULT_FORMAT, 2, 512 )<0) 
+  { 
+    printf( "SDL_mixer could not initialize!\n");
+    exit(-1);
+  }
+  
+  //Initialize renderer color
+  SDL_SetRenderDrawColor( sdl_renderer, 0xFF, 0xFF, 0xFF, 0xFF );
+  
+  // Load small font
+  font_small = load_font("ArcadeClassic.ttf", 50);
+  
+  // Load medium font
+  font_medium = load_font("ArcadeClassic.ttf", 80);
+  
+  // Load big font
+  font_big = load_font("ArcadeClassic.ttf", 100);  
+  
 }
 
 void close_sdl()
 {
+  int i;
+  
   // Close media
   close_media();
+
+  // Close small font
+  TTF_CloseFont(font_small);
+  // Close medium font
+  TTF_CloseFont(font_medium);
+  // Close big font
+  TTF_CloseFont(font_big);
   
   //Destroy renderer  
   if(sdl_renderer!=NULL)
@@ -201,6 +233,13 @@ void close_sdl()
     sdl_window=NULL;
   }
   
+  // Close gamepads
+  for(i=0; i<SDL_NumJoysticks(); i++)
+  {
+    SDL_JoystickClose(sdl_gamepads[i]);
+    sdl_gamepads[i]=NULL;
+  }
+  
   // Exit SDL
   Mix_CloseAudio();
   TTF_Quit();
@@ -212,7 +251,7 @@ void load_texture(struct sized_texture *texture, char *path)
 {
   // Aux surface
   SDL_Surface* loadedSurface;
-
+  
   //Load image at specified path
   loadedSurface = IMG_Load(path);
   if(loadedSurface == NULL )
@@ -229,10 +268,10 @@ void load_texture(struct sized_texture *texture, char *path)
   {
     printf( "Unable to create texture from %s! SDL Error: %s\n", path, SDL_GetError() );
   }
-
+  
   //Get rid of old loaded surface
   SDL_FreeSurface(loadedSurface);
-
+  
 }
 
 TTF_Font* load_font(char *font_path, int size)
@@ -254,11 +293,9 @@ void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text, S
 {
   //The final texture
   texture->texture = NULL;
-  // Text color
-  SDL_Color textColor = { 0, 0, 0 };
-
+    
   //Load image at specified path
-  SDL_Surface *loadedSurface = TTF_RenderText_Solid( font, text, textColor );
+  SDL_Surface *loadedSurface = TTF_RenderText_Solid( font, text, color );
   if( loadedSurface == NULL )
   {
     printf( "Unable to render text! SDL_image Error: %s\n", TTF_GetError() );
@@ -269,7 +306,7 @@ void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text, S
     //printf("Surface: %d, %d\n", loadedSurface->w, loadedSurface->h);
     
     //Create texture from surface pixels
-        texture->texture = SDL_CreateTextureFromSurface(sdl_renderer, loadedSurface );
+    texture->texture = SDL_CreateTextureFromSurface(sdl_renderer, loadedSurface );
     if( texture->texture == NULL )
     {
       printf( "Unable to create texture! SDL Error: %s\n", SDL_GetError() );
@@ -280,11 +317,11 @@ void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text, S
       texture->width = loadedSurface->w; 
       texture->height = loadedSurface->h;      
     }
-
+    
     //Get rid of old loaded surface
     SDL_FreeSurface( loadedSurface );
   }
-
+  
 }
 
 void sync_render()
@@ -293,7 +330,7 @@ void sync_render()
   long remaining;
   
   ticks = SDL_GetTicks();
-  if(!game_over && !pause)
+  if(!game_over && !pause && !players_menu)
   {
     // Count frames
     frames++;
@@ -301,7 +338,14 @@ void sync_render()
     update_game();
   }
   // Render screen
-  render();  
+  if(players_menu)
+  {
+    render_menu();
+  }
+  else
+  {
+    render();  
+  }
   
   remaining = ticks;
   //remaining = remaining + 16 - SDL_GetTicks();
@@ -317,56 +361,135 @@ void sync_render()
   {
     printf("%ld remaining!!!\n", remaining);
   }
-
+  
 }
 
 void process_input(SDL_Event *e)
 {
-    //User requests quit
-      if(e->type == SDL_QUIT 
-          // User press ESC or q
-          || (e->type == SDL_KEYDOWN && (e->key.keysym.sym=='q' || e->key.keysym.sym == 27))
-          )
-      {
-        quit = 1;
-      }
-      // Axis 0 controls player velocity
-      else if(e->type == SDL_JOYAXISMOTION && e->jaxis.axis == 0)
-      {
-        //printf("controller: %d, axis: %d, value: %d\n", e->jaxis.which, e->jaxis.axis, e->jaxis.value);
-	process_axis(e->jaxis.which, e->jaxis.axis, e->jaxis.value);
-      }
-      // Buttons down
-      else if(e->type == SDL_JOYBUTTONDOWN) 
-      {
-	if(e->jbutton.button == BUTTON_SELECT)
-	{
-	  select_button=1;
-	}
-	if(e->jbutton.button == BUTTON_START)
-	{
-	  start_button=1;
-	}
-	process_button_down(e->jbutton.which, e->jbutton.button);
-      }
-      // Buttons up
-      else if(e->type == SDL_JOYBUTTONUP) 
-      {
-	if(e->jbutton.button == BUTTON_SELECT)
-	{
-	  select_button=0;
-	}
-	if(e->jbutton.button == BUTTON_START)
-	{
-	  start_button=0;
-	}
-	process_button_up(e->jbutton.which, e->jbutton.button);
-      }
-      if(start_button && select_button)
-      {
-	quit=1;
-      }
+  //User requests quit
+  if(e->type == SDL_QUIT 
+    // User press ESC or q
+    || (e->type == SDL_KEYDOWN && (e->key.keysym.sym=='q' || e->key.keysym.sym == 27))
+  )
+  {
+    quit = 1;
+  }
+  // Axis 0 controls player velocity
+  else if(e->type == SDL_JOYAXISMOTION)
+  {
+    //printf("controller: %d, axis: %d, value: %d\n", e->jaxis.which, e->jaxis.axis, e->jaxis.value);
+    process_axis(e->jaxis.which, e->jaxis.axis, e->jaxis.value);
+  }
+  // Buttons down
+  else if(e->type == SDL_JOYBUTTONDOWN) 
+  {
+    if(e->jbutton.button == BUTTON_SELECT)
+    {
+      select_button=1;
+    }
+    if(e->jbutton.button == BUTTON_START)
+    {
+      start_button=1;
+    }
+    if(e->jbutton.button != BUTTON_SELECT && e->jbutton.button != BUTTON_START)
+    {
+      process_button_down(e->jbutton.which, e->jbutton.button);
+    }
+  }
+  // Buttons up
+  else if(e->type == SDL_JOYBUTTONUP) 
+  {
+    if(e->jbutton.button == BUTTON_SELECT)
+    {
+      select_button=0;
+    }
+    if(e->jbutton.button == BUTTON_START)
+    {
+      start_button=0;
+    }
+    if(e->jbutton.button != BUTTON_SELECT && e->jbutton.button != BUTTON_START)
+    {
+      process_button_up(e->jbutton.which, e->jbutton.button);
+    }
+  }
+  if(start_button && select_button)
+  {
+    quit=1;
+  }
+  if(players_menu && select_button)
+  {
+    players++;
+    if(players>2)
+    {
+      players=1;
+    }
+  }
+  if(players_menu && start_button)
+  {
+    // Init game data
+    init_game();
+    // Close menu
+    players_menu=0;
+  }
 }
+
+void render_menu()
+{
+  SDL_Rect sdl_rect;
+  struct sized_texture texture_text;
+  SDL_Color sdl_color;
+  
+  //Clear screen
+  SDL_SetRenderDrawColor( sdl_renderer, 0x00, 0x00, 0x00, 0xFF );
+  SDL_RenderClear( sdl_renderer );
+  
+  if(players==1)
+  {
+    sdl_color.r=255;
+    sdl_color.g=255;
+    sdl_color.b=255;
+    sdl_color.a=255;
+  }
+  else
+  {
+    sdl_color.r=70;
+    sdl_color.g=70;
+    sdl_color.b=70;
+    sdl_color.a=255;
+  }
+  loadTFTTexture(&texture_text, font_medium, "1 Player", sdl_color);
+  sdl_rect.x=SCREEN_WIDTH/2-texture_text.width/2;
+  sdl_rect.y=125;
+  sdl_rect.w=texture_text.width;
+  sdl_rect.h=texture_text.height;  
+  SDL_RenderCopy(sdl_renderer, texture_text.texture, NULL, &sdl_rect);
+  SDL_DestroyTexture(texture_text.texture);
+  
+  if(players==2)
+  {
+    sdl_color.r=255;
+    sdl_color.g=255;
+    sdl_color.b=255;
+    sdl_color.a=255;
+  }
+  else
+  {
+    sdl_color.r=70;
+    sdl_color.g=70;
+    sdl_color.b=70;
+    sdl_color.a=255;
+  }
+  sdl_rect.y+=100;
+  loadTFTTexture(&texture_text, font_medium, "2 Players", sdl_color);
+  sdl_rect.w=texture_text.width;
+  sdl_rect.h=texture_text.height;  
+  SDL_RenderCopy(sdl_renderer, texture_text.texture, NULL, &sdl_rect);
+  SDL_DestroyTexture(texture_text.texture);
+  
+  //Update screen
+  SDL_RenderPresent(sdl_renderer);
+}
+
 
 int main( int argc, char* args[] )
 {
@@ -386,9 +509,6 @@ int main( int argc, char* args[] )
   // Load Media
   load_media();
   
-  // Init game data
-  init_game();
-  
   // Main game loop
   while(!quit)
   {
@@ -400,8 +520,8 @@ int main( int argc, char* args[] )
     // Render
     sync_render();
   }
-
-
+  
+  
   close_sdl();
   return 0;
 }
@@ -411,7 +531,6 @@ int main( int argc, char* args[] )
 
 #define MAGAZINE_SIZE 4
 #define BULLETS_SIZE 100
-#define DUCKS_SIZE 10
 #define DUCK_WIDTH 40
 #define DUCK_HEIGHT 30
 #define ANGLE_BULLET 35.0*M_PI/180.0
@@ -427,6 +546,7 @@ struct bullet
   int y;
   int vx;
   int vy;
+  int player;
 };
 
 struct duck
@@ -445,9 +565,14 @@ struct shot_gun
   unsigned int cocking_time;
 };
 
+struct hunter
+{
+  int x,y,score;
+};
+
 void init_ball();
-void fire();
-void cock();
+void fire(int);
+void cock(int);
 void process_start_button();
 void process_select_button();
 
@@ -469,27 +594,12 @@ struct sized_texture texture_bulllet;
 struct sized_texture texture_sprites;
 
 
-
-
-
-//Globally used font 
-TTF_Font *font_small = NULL;
-TTF_Font *font_big = NULL;
-
 /** GAME DATA **/
-int p1_y;
-int p2_y;
-int p1_x;
-int p2_x;
-int p1_vx;
-int p2_vx;
-int player_speed;
-int p1_score;
-int p2_score;
-int p1_flip;
-struct shot_gun shotgun;
+struct hunter hunters[2];
+struct shot_gun shotgun[2];
 struct bullet bullets[BULLETS_SIZE];
-struct duck ducks[DUCKS_SIZE];
+struct duck ducks[20];
+int ducks_size;
 int hunter_height;
 int hunter_width;
 int duck_height;
@@ -523,11 +633,6 @@ void load_media()
   // Load quack
   quack_chunk = Mix_LoadWAV("quack.wav");
   
-  // Load small font
-  font_small = load_font("ArcadeClassic.ttf", 50);
-  
-  // Load big font
-  font_big = load_font("ArcadeClassic.ttf", 100);  
 }
 
 void close_media()
@@ -543,14 +648,11 @@ void close_media()
   SDL_DestroyTexture(texture_hunter.texture);
   SDL_DestroyTexture(texture_bulllet.texture);
   SDL_DestroyTexture(texture_sprites.texture);
-  
-  TTF_CloseFont(font_small);
-  TTF_CloseFont(font_big);
 }
 
 void init_game()
 {
-  int i;
+  int i,j;
   
   if(SCREEN_HEIGHT>600)
   {
@@ -569,27 +671,26 @@ void init_game()
     speed_bullet=SPEED_BULLET;
   }
   
-  p1_x=10;
-  p2_x=SCREEN_WIDTH-10;
-  p1_y=SCREEN_HEIGHT-hunter_height-40;
-  p2_y=0;
-  p1_vx=0;
-  p2_vx=0;
-  p1_score=0;
-  p2_score=0;
-  player_speed=10;
-  p1_flip=0;
-  shotgun.magazine=MAGAZINE_SIZE;
-  shotgun.cocking_time=0;
+  hunters[0].x=10;
+  hunters[1].x=SCREEN_WIDTH-110;
+  hunters[0].y=SCREEN_HEIGHT-hunter_height-40;
+  hunters[1].y=hunters[0].y;
+  hunters[0].score=0;
+  hunters[1].score=0;
+  shotgun[0].magazine=MAGAZINE_SIZE;
+  shotgun[0].cocking_time=0;
+  shotgun[1].magazine=MAGAZINE_SIZE;
+  shotgun[1].cocking_time=0;
   
   // Init bullets
   for(i=0; i<BULLETS_SIZE; i++)
   {
-      bullets[i].enabled=0;
+    bullets[i].enabled=0;
   }
   
   // init ducks
-  for(i=0; i<DUCKS_SIZE; i++)
+  ducks_size=10;
+  for(i=0; i<10; i++)
   {
     ducks[i].x=DUCK_START_X-300*i-200*(i%2);
     ducks[i].y=50+50*(i%2);
@@ -598,20 +699,30 @@ void init_game()
     ducks[i].shoot_time=0;
     ducks[i].enabled=1;
   }
+  if(players==2)
+  {
+    ducks_size=20;
+    for(i=10,j=0; i<20; i++,j++)
+    {
+      ducks[i].x=SCREEN_WIDTH+300*j+200*(j%2);
+      ducks[i].y=20+50*(j%2);
+      ducks[i].vx=-DUCK_SPEED;
+      ducks[i].vy=0;
+      ducks[i].shoot_time=0;
+      ducks[i].enabled=1;
+    }
+  }
   
 }
 
 void update_game()
 {
   int i,j, all_ducks_disabled;
-
+  
   if(game_over || pause) return;
   
-  // Update game
-  p1_x+=p1_vx;
-  
   // update ducks
-  for(i=0; i<DUCKS_SIZE; i++)
+  for(i=0; i<ducks_size; i++)
   {
     // Update ducks speed
     
@@ -623,7 +734,12 @@ void update_game()
       ducks[i].vy=0;
     }
     // Disable outscreen ducks
-    if(ducks[i].x>SCREEN_WIDTH)
+    if(ducks[i].vx>0 && ducks[i].x>SCREEN_WIDTH)
+    {
+      ducks[i].enabled=0;
+    }
+    // Disable outscreen ducks
+    if(ducks[i].vx<0 && ducks[i].x<0)
     {
       ducks[i].enabled=0;
     }
@@ -632,7 +748,6 @@ void update_game()
     {
       ducks[i].vx=0;
       ducks[i].vy=0;
-      p1_score++;
     }
     // 10 frames after shot, the ducks falls
     if(ducks[i].shoot_time != 0 && frames == ducks[i].shoot_time+10)
@@ -646,9 +761,12 @@ void update_game()
     ducks[i].y+=ducks[i].vy;
     
     // Update shotgun status
-    if(frames == shotgun.cocking_time)
+    for(j=0; j<2; j++)
     {
-      shotgun.magazine=MAGAZINE_SIZE;
+      if(frames == shotgun[j].cocking_time)
+      {
+	shotgun[j].magazine=MAGAZINE_SIZE;
+      }
     }
   }
   
@@ -669,21 +787,22 @@ void update_game()
   // Check collisions
   for(i=0; i<BULLETS_SIZE; i++)
   {
-    for(j=0; j<DUCKS_SIZE; j++)
+    for(j=0; j<ducks_size; j++)
     {
       if(bullets[i].enabled && ducks[j].enabled &&
-        bullets[i].x>ducks[j].x && bullets[i].x<ducks[j].x+duck_width
-        && bullets[i].y>ducks[j].y && bullets[i].y<ducks[j].y+duck_height)
+	bullets[i].x>ducks[j].x && bullets[i].x<ducks[j].x+duck_width
+	&& bullets[i].y>ducks[j].y && bullets[i].y<ducks[j].y+duck_height)
       {
-        ducks[j].shoot_time=frames+1;
-        bullets[i].enabled=0;
+	ducks[j].shoot_time=frames+1;
+	hunters[bullets[i].player].score++;
+	bullets[i].enabled=0;
       }
     }
   }
   
   // Check if end of game
   all_ducks_disabled=1;
-  for(i=0; i<DUCKS_SIZE; i++)
+  for(i=0; i<ducks_size; i++)
   {
     if(ducks[i].enabled)
     {
@@ -702,10 +821,11 @@ void render()
   SDL_Rect sdl_rect;
   SDL_Rect sdl_rect2;
   SDL_Color sdl_color;
-  int i;
+  int i,j;
   struct sized_texture texture_text_p1;
-//  struct sized_texture texture_text_p2;
+  //  struct sized_texture texture_text_p2;
   char p1_score_s[5];
+  char p2_score_s[5];
   struct sized_texture texture_game_over;
   
   //Clear screen
@@ -716,40 +836,50 @@ void render()
   SDL_RenderCopy(sdl_renderer, texture_background.texture, NULL, NULL);
   
   // Render hunter
-  sdl_rect.x=p1_x;
-  sdl_rect.y=p1_y;
+  sdl_rect.x=hunters[0].x;
+  sdl_rect.y=hunters[0].y;
   sdl_rect.w=hunter_width;
   sdl_rect.h=hunter_height;
-  SDL_RenderCopyEx(sdl_renderer, texture_hunter.texture, NULL, &sdl_rect, 0.0, NULL, p1_flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
+  SDL_RenderCopyEx(sdl_renderer, texture_hunter.texture, NULL, &sdl_rect, 0.0, NULL, SDL_FLIP_NONE);
+  
+  // Render hunter p2
+  if(players==2)
+  {
+    sdl_rect.x=hunters[1].x;
+    sdl_rect.y=hunters[1].y;
+    sdl_rect.w=hunter_width;
+    sdl_rect.h=hunter_height;
+    SDL_RenderCopyEx(sdl_renderer, texture_hunter.texture, NULL, &sdl_rect, 0.0, NULL, SDL_FLIP_HORIZONTAL);
+  }
   
   // Render ducks
-  for(i=0; i<DUCKS_SIZE; i++)
+  for(i=0; i<ducks_size; i++)
   {
-      if(ducks[i].enabled)
+    if(ducks[i].enabled)
+    {
+      if(ducks[i].vx>0 && ducks[i].vy==0)
       {
-        if(ducks[i].vx>0 && ducks[i].vy==0)
-        {
-            sdl_rect.x=130+(frames/10%3*40);
-            sdl_rect.y=120;
-        }
-        else if(ducks[i].vx==0 && ducks[i].vy==0)
-        {
-            sdl_rect.x=131;
-            sdl_rect.y=238;
-        }
-        else if(ducks[i].vx==0 && ducks[i].vy>0)
-        {
-            sdl_rect.x=178;
-            sdl_rect.y=237;
-        }
-        sdl_rect.w=DUCK_WIDTH;
-        sdl_rect.h=DUCK_HEIGHT;
-        sdl_rect2.x=ducks[i].x;
-        sdl_rect2.y=ducks[i].y;
-        sdl_rect2.w=duck_width;
-        sdl_rect2.h=duck_height;      
-        SDL_RenderCopy(sdl_renderer, texture_sprites.texture, &sdl_rect, &sdl_rect2);
+	sdl_rect.x=130+(frames/10%3*40);
+	sdl_rect.y=120;
       }
+      else if(ducks[i].vx==0 && ducks[i].vy==0)
+      {
+	sdl_rect.x=131;
+	sdl_rect.y=238;
+      }
+      else if(ducks[i].vx==0 && ducks[i].vy>0)
+      {
+	sdl_rect.x=178;
+	sdl_rect.y=237;
+      }
+      sdl_rect.w=DUCK_WIDTH;
+      sdl_rect.h=DUCK_HEIGHT;
+      sdl_rect2.x=ducks[i].x;
+      sdl_rect2.y=ducks[i].y;
+      sdl_rect2.w=duck_width;
+      sdl_rect2.h=duck_height;      
+      SDL_RenderCopyEx(sdl_renderer, texture_sprites.texture, &sdl_rect,  &sdl_rect2, 0.0, NULL, ducks[i].vx>0 ? SDL_FLIP_NONE : SDL_FLIP_HORIZONTAL);
+    }
   }
   
   // Render fired bullets
@@ -758,22 +888,32 @@ void render()
   {
     if(bullets[i].enabled)
     {
-        sdl_rect.x=bullets[i].x;
-        sdl_rect.y=bullets[i].y;
-        sdl_rect.w=4;
-        sdl_rect.h=4;
-        SDL_RenderFillRect(sdl_renderer, &sdl_rect);
+      sdl_rect.x=bullets[i].x;
+      sdl_rect.y=bullets[i].y;
+      sdl_rect.w=4;
+      sdl_rect.h=4;
+      SDL_RenderFillRect(sdl_renderer, &sdl_rect);
     }
   }
-      
+  
   // Render bullets remaining
-  for(i=0; i<shotgun.magazine; i++)
+  sdl_rect.y=SCREEN_HEIGHT - texture_bulllet.height-10;
+  sdl_rect.w=texture_bulllet.width;
+  sdl_rect.h=texture_bulllet.height;  
+  for(j=0; j<players; j++)
   {
-    sdl_rect.x=10*i;
-    sdl_rect.y=SCREEN_HEIGHT - texture_bulllet.height-10;
-    sdl_rect.w=texture_bulllet.width;
-    sdl_rect.h=texture_bulllet.height;  
-    SDL_RenderCopy(sdl_renderer, texture_bulllet.texture, NULL, &sdl_rect);
+    for(i=0; i<shotgun[j].magazine; i++)
+    {    
+      if(j==0)
+      {
+	sdl_rect.x=10*i;
+      }
+      else
+      {
+	sdl_rect.x=SCREEN_WIDTH-25-10*i;
+      }
+      SDL_RenderCopy(sdl_renderer, texture_bulllet.texture, NULL, &sdl_rect);
+    }
   }
   
   // Render ducks counter
@@ -790,14 +930,33 @@ void render()
   sdl_rect2.w=DUCK_WIDTH;
   sdl_rect2.h=DUCK_HEIGHT;
   SDL_RenderCopy(sdl_renderer, texture_sprites.texture, &sdl_rect, &sdl_rect2);
-  sprintf(p1_score_s, "%02d", p1_score);
-  loadTFTTexture(&texture_text_p1, font_small, p1_score_s, sdl_color);
+  if(players==2)
+  {
+    sdl_rect2.x=SCREEN_WIDTH-200;
+    SDL_RenderCopy(sdl_renderer, texture_sprites.texture, &sdl_rect, &sdl_rect2);
+  }
+  
+  sprintf(p1_score_s, "%02d", hunters[0].score);
+  sprintf(p2_score_s, "%02d", hunters[1].score);
+  
   sdl_rect.x=100;
   sdl_rect.y=SCREEN_HEIGHT - 49;
+    
+  loadTFTTexture(&texture_text_p1, font_small, p1_score_s, sdl_color);
   sdl_rect.w=texture_text_p1.width;
-  sdl_rect.h=texture_text_p1.height;  
+  sdl_rect.h=texture_text_p1.height;
   SDL_RenderCopy(sdl_renderer, texture_text_p1.texture, NULL, &sdl_rect);
   SDL_DestroyTexture(texture_text_p1.texture);
+  
+  if(players==2)
+  {
+    sdl_rect.x=SCREEN_WIDTH-150;
+    loadTFTTexture(&texture_text_p1, font_small, p2_score_s, sdl_color);
+    sdl_rect.w=texture_text_p1.width;
+    sdl_rect.h=texture_text_p1.height;
+    SDL_RenderCopy(sdl_renderer, texture_text_p1.texture, NULL, &sdl_rect);
+    SDL_DestroyTexture(texture_text_p1.texture);
+  }
   
   
   // Render game game  over
@@ -829,7 +988,7 @@ void render()
   {
     Mix_PlayChannel(-1, quack_chunk, 0);
   }
-      
+  
   //Update screen
   SDL_RenderPresent(sdl_renderer);
 }
@@ -837,20 +996,6 @@ void render()
 
 void process_axis(int controller, int axis, int value)
 {
-  // Axis 0 controls player velocity
-  if(axis == 0)
-  {
-    //printf("controller: %d, axis: %d, value: %d\n", e->jaxis.which, e->jaxis.axis, e->jaxis.value);
-    p1_vx=player_speed*value/32767; 
-    if(p1_vx>0)
-    {
-      p1_flip=0;
-    }
-    else if(p1_vx<0)
-    {
-      p1_flip=1;
-    }
-  }
 }
 
 void process_button_down(int controller, int button)
@@ -858,9 +1003,11 @@ void process_button_down(int controller, int button)
   switch(button) 
   {
     // Fire
-    case BUTTON_A: case BUTTON_R1: case BUTTON_R2: fire(); break;
+    case BUTTON_A: case BUTTON_R1: case BUTTON_R2: fire(controller); break;
+    case BUTTON_X: fire(controller+1); break;
+    case BUTTON_Y: cock(controller+1); break;
     // Reload
-    case BUTTON_B: case BUTTON_L1: cock(); break;
+    case BUTTON_B: case BUTTON_L1: cock(controller); break;
     case BUTTON_SELECT: process_select_button(); break;
     case BUTTON_START: process_start_button(); break;    
   }
@@ -870,41 +1017,43 @@ void process_button_up(int controller, int button)
 }
 
 
-void fire()
+void fire(int player)
 {
   struct bullet current;
   int i;
   
   if(game_over) return;
   
-  if(shotgun.magazine>0)
+  if(players==1 && player==1) return;
+  
+  if(shotgun[player].magazine>0)
   {
-    if(!p1_flip)
+    current.y=hunters[player].y;
+    current.player=player;
+    
+    if(player==0)
     {
-      current.x=p1_x+hunter_width;
-      current.y=p1_y;
+      current.x=hunters[player].x + hunter_width;
       current.vx=speed_bullet*cos(ANGLE_BULLET);
-      current.vy=-1.0*speed_bullet*sin(ANGLE_BULLET);
-    }
-    else
+    }    
+    else if(player==1)
     {
-      current.x=p1_x;
-      current.y=p1_y;
-      current.vx=-1.0*speed_bullet*cos(ANGLE_BULLET);
-      current.vy=-1.0*speed_bullet*sin(ANGLE_BULLET);
+      current.x=hunters[player].x;
+      current.vx=-speed_bullet*cos(ANGLE_BULLET);
     }
+    current.vy=-1.0*speed_bullet*sin(ANGLE_BULLET);
     
     // Insert bullet in array
     for(i=0; i<BULLETS_SIZE; i++)
     {
-        if(!bullets[i].enabled)
-        {
-            bullets[i]=current;
-            bullets[i].enabled=1;
-            shotgun.magazine--;
-            Mix_PlayChannel(-1, fire_chunk, 0);
-            break;
-        }
+      if(!bullets[i].enabled)
+      {
+	bullets[i]=current;
+	bullets[i].enabled=1;
+	shotgun[player].magazine--;
+	Mix_PlayChannel(-1, fire_chunk, 0);
+	break;
+      }
     }
   }
   else
@@ -913,12 +1062,12 @@ void fire()
   }
 }
 
-void cock()
+void cock(int player)
 {
   if(game_over) return;
-  shotgun.magazine=0;
+  shotgun[player].magazine=0;
   Mix_PlayChannel(-1, cocking_chunk, 0);
-  shotgun.cocking_time=frames+30;
+  shotgun[player].cocking_time=frames+30;
 }
 
 void process_start_button()
@@ -946,7 +1095,7 @@ void process_select_button()
 
 
 
-  
-  
-  
-  
+
+
+
+
