@@ -427,6 +427,9 @@ void process_input(SDL_Event *e)
   }
   if(players_menu && start_button)
   {
+    // Init game data
+    init_game();
+    // Close menu
     players_menu=0;
   }
 }
@@ -507,9 +510,6 @@ int main( int argc, char* args[] )
   // Load Media
   load_media();
   
-  // Init game data
-  init_game();
-  
   // Main game loop
   while(!quit)
   {
@@ -532,7 +532,6 @@ int main( int argc, char* args[] )
 
 #define MAGAZINE_SIZE 4
 #define BULLETS_SIZE 100
-#define DUCKS_SIZE 10
 #define DUCK_WIDTH 40
 #define DUCK_HEIGHT 30
 #define ANGLE_BULLET 35.0*M_PI/180.0
@@ -602,7 +601,8 @@ int p1_score;
 int p2_score;
 struct shot_gun shotgun;
 struct bullet bullets[BULLETS_SIZE];
-struct duck ducks[DUCKS_SIZE];
+struct duck ducks[20];
+int ducks_size;
 int hunter_height;
 int hunter_width;
 int duck_height;
@@ -655,7 +655,7 @@ void close_media()
 
 void init_game()
 {
-  int i;
+  int i,j;
   
   if(SCREEN_WIDTH>720)
   {
@@ -693,7 +693,8 @@ void init_game()
   }
   
   // init ducks
-  for(i=0; i<DUCKS_SIZE; i++)
+  ducks_size=10;
+  for(i=0; i<10; i++)
   {
     ducks[i].x=DUCK_START_X-300*i-200*(i%2);
     ducks[i].y=50+50*(i%2);
@@ -701,6 +702,19 @@ void init_game()
     ducks[i].vy=0;
     ducks[i].shoot_time=0;
     ducks[i].enabled=1;
+  }
+  if(players==2)
+  {
+    ducks_size=20;
+    for(i=10,j=0; i<20; i++,j++)
+    {
+      ducks[i].x=SCREEN_WIDTH+300*j+200*(j%2);
+      ducks[i].y=20+50*(j%2);
+      ducks[i].vx=-DUCK_SPEED;
+      ducks[i].vy=0;
+      ducks[i].shoot_time=0;
+      ducks[i].enabled=1;
+    }
   }
   
 }
@@ -715,7 +729,7 @@ void update_game()
   p1_x+=p1_vx;
   
   // update ducks
-  for(i=0; i<DUCKS_SIZE; i++)
+  for(i=0; i<ducks_size; i++)
   {
     // Update ducks speed
     
@@ -727,7 +741,12 @@ void update_game()
       ducks[i].vy=0;
     }
     // Disable outscreen ducks
-    if(ducks[i].x>SCREEN_WIDTH)
+    if(ducks[i].vx>0 && ducks[i].x>SCREEN_WIDTH)
+    {
+      ducks[i].enabled=0;
+    }
+    // Disable outscreen ducks
+    if(ducks[i].vx<0 && ducks[i].x<0)
     {
       ducks[i].enabled=0;
     }
@@ -773,7 +792,7 @@ void update_game()
   // Check collisions
   for(i=0; i<BULLETS_SIZE; i++)
   {
-    for(j=0; j<DUCKS_SIZE; j++)
+    for(j=0; j<ducks_size; j++)
     {
       if(bullets[i].enabled && ducks[j].enabled &&
 	bullets[i].x>ducks[j].x && bullets[i].x<ducks[j].x+duck_width
@@ -787,7 +806,7 @@ void update_game()
   
   // Check if end of game
   all_ducks_disabled=1;
-  for(i=0; i<DUCKS_SIZE; i++)
+  for(i=0; i<ducks_size; i++)
   {
     if(ducks[i].enabled)
     {
@@ -837,7 +856,7 @@ void render()
   }
   
   // Render ducks
-  for(i=0; i<DUCKS_SIZE; i++)
+  for(i=0; i<ducks_size; i++)
   {
     if(ducks[i].enabled)
     {
@@ -862,7 +881,7 @@ void render()
       sdl_rect2.y=ducks[i].y;
       sdl_rect2.w=duck_width;
       sdl_rect2.h=duck_height;      
-      SDL_RenderCopy(sdl_renderer, texture_sprites.texture, &sdl_rect, &sdl_rect2);
+      SDL_RenderCopyEx(sdl_renderer, texture_sprites.texture, &sdl_rect,  &sdl_rect2, 0.0, NULL, ducks[i].vx>0 ? SDL_FLIP_NONE : SDL_FLIP_HORIZONTAL);
     }
   }
   
