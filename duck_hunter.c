@@ -566,8 +566,8 @@ struct shot_gun
 };
 
 void init_ball();
-void fire();
-void cock();
+void fire(int);
+void cock(int);
 void process_start_button();
 void process_select_button();
 
@@ -599,7 +599,7 @@ int p2_vx;
 int player_speed;
 int p1_score;
 int p2_score;
-struct shot_gun shotgun;
+struct shot_gun shotgun[2];
 struct bullet bullets[BULLETS_SIZE];
 struct duck ducks[20];
 int ducks_size;
@@ -683,8 +683,10 @@ void init_game()
   p1_score=0;
   p2_score=0;
   player_speed=10;
-  shotgun.magazine=MAGAZINE_SIZE;
-  shotgun.cocking_time=0;
+  shotgun[0].magazine=MAGAZINE_SIZE;
+  shotgun[0].cocking_time=0;
+  shotgun[1].magazine=MAGAZINE_SIZE;
+  shotgun[1].cocking_time=0;
   
   // Init bullets
   for(i=0; i<BULLETS_SIZE; i++)
@@ -769,9 +771,12 @@ void update_game()
     ducks[i].y+=ducks[i].vy;
     
     // Update shotgun status
-    if(frames == shotgun.cocking_time)
+    for(j=0; j<2; j++)
     {
-      shotgun.magazine=MAGAZINE_SIZE;
+      if(frames == shotgun[j].cocking_time)
+      {
+	shotgun[j].magazine=MAGAZINE_SIZE;
+      }
     }
   }
   
@@ -825,7 +830,7 @@ void render()
   SDL_Rect sdl_rect;
   SDL_Rect sdl_rect2;
   SDL_Color sdl_color;
-  int i;
+  int i,j;
   struct sized_texture texture_text_p1;
   //  struct sized_texture texture_text_p2;
   char p1_score_s[5];
@@ -900,13 +905,23 @@ void render()
   }
   
   // Render bullets remaining
-  for(i=0; i<shotgun.magazine; i++)
+  sdl_rect.y=SCREEN_HEIGHT - texture_bulllet.height-10;
+  sdl_rect.w=texture_bulllet.width;
+  sdl_rect.h=texture_bulllet.height;  
+  for(j=0; j<2; j++)
   {
-    sdl_rect.x=10*i;
-    sdl_rect.y=SCREEN_HEIGHT - texture_bulllet.height-10;
-    sdl_rect.w=texture_bulllet.width;
-    sdl_rect.h=texture_bulllet.height;  
-    SDL_RenderCopy(sdl_renderer, texture_bulllet.texture, NULL, &sdl_rect);
+    for(i=0; i<shotgun[j].magazine; i++)
+    {    
+      if(j==0)
+      {
+	sdl_rect.x=10*i;
+      }
+      else
+      {
+	sdl_rect.x=SCREEN_WIDTH-25-10*i;
+      }
+      SDL_RenderCopy(sdl_renderer, texture_bulllet.texture, NULL, &sdl_rect);
+    }
   }
   
   // Render ducks counter
@@ -977,9 +992,11 @@ void process_button_down(int controller, int button)
   switch(button) 
   {
     // Fire
-    case BUTTON_A: case BUTTON_R1: case BUTTON_R2: fire(); break;
+    case BUTTON_A: case BUTTON_R1: case BUTTON_R2: fire(controller); break;
+    case BUTTON_X: fire(controller+1); break;
+    case BUTTON_Y: cock(controller+1); break;
     // Reload
-    case BUTTON_B: case BUTTON_L1: cock(); break;
+    case BUTTON_B: case BUTTON_L1: cock(controller); break;
     case BUTTON_SELECT: process_select_button(); break;
     case BUTTON_START: process_start_button(); break;    
   }
@@ -989,14 +1006,14 @@ void process_button_up(int controller, int button)
 }
 
 
-void fire()
+void fire(int player)
 {
   struct bullet current;
   int i;
   
   if(game_over) return;
   
-  if(shotgun.magazine>0)
+  if(shotgun[player].magazine>0)
   {
     current.x=p1_x+hunter_width;
     current.y=p1_y;
@@ -1010,7 +1027,7 @@ void fire()
       {
 	bullets[i]=current;
 	bullets[i].enabled=1;
-	shotgun.magazine--;
+	shotgun[player].magazine--;
 	Mix_PlayChannel(-1, fire_chunk, 0);
 	break;
       }
@@ -1022,12 +1039,12 @@ void fire()
   }
 }
 
-void cock()
+void cock(int player)
 {
   if(game_over) return;
-  shotgun.magazine=0;
+  shotgun[player].magazine=0;
   Mix_PlayChannel(-1, cocking_chunk, 0);
-  shotgun.cocking_time=frames+30;
+  shotgun[player].cocking_time=frames+30;
 }
 
 void process_start_button()
