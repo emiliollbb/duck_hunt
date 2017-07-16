@@ -90,8 +90,8 @@ void init()
 {
   int i;
   
-  SCREEN_WIDTH = 720;
-  SCREEN_HEIGHT = 480;
+  SCREEN_WIDTH = 1024;
+  SCREEN_HEIGHT = 600;
   frames = 0;
   game_over=0;
   pause=0;
@@ -547,6 +547,7 @@ struct bullet
   int y;
   int vx;
   int vy;
+  int player;
 };
 
 struct duck
@@ -654,7 +655,7 @@ void init_game()
 {
   int i,j;
   
-  if(SCREEN_WIDTH>720)
+  if(SCREEN_HEIGHT>600)
   {
     hunter_height=2*texture_hunter.height;
     hunter_width=2*texture_hunter.width;
@@ -748,7 +749,6 @@ void update_game()
     {
       ducks[i].vx=0;
       ducks[i].vy=0;
-      hunters[0].score++;
     }
     // 10 frames after shot, the ducks falls
     if(ducks[i].shoot_time != 0 && frames == ducks[i].shoot_time+10)
@@ -795,6 +795,7 @@ void update_game()
 	&& bullets[i].y>ducks[j].y && bullets[i].y<ducks[j].y+duck_height)
       {
 	ducks[j].shoot_time=frames+1;
+	hunters[bullets[i].player].score++;
 	bullets[i].enabled=0;
       }
     }
@@ -825,6 +826,7 @@ void render()
   struct sized_texture texture_text_p1;
   //  struct sized_texture texture_text_p2;
   char p1_score_s[5];
+  char p2_score_s[5];
   struct sized_texture texture_game_over;
   
   //Clear screen
@@ -929,14 +931,28 @@ void render()
   sdl_rect2.w=DUCK_WIDTH;
   sdl_rect2.h=DUCK_HEIGHT;
   SDL_RenderCopy(sdl_renderer, texture_sprites.texture, &sdl_rect, &sdl_rect2);
+  sdl_rect2.x=SCREEN_WIDTH-200;
+  SDL_RenderCopy(sdl_renderer, texture_sprites.texture, &sdl_rect, &sdl_rect2);
+  
   sprintf(p1_score_s, "%02d", hunters[0].score);
-  loadTFTTexture(&texture_text_p1, font_small, p1_score_s, sdl_color);
+  sprintf(p2_score_s, "%02d", hunters[1].score);
+  
   sdl_rect.x=100;
   sdl_rect.y=SCREEN_HEIGHT - 49;
+    
+  loadTFTTexture(&texture_text_p1, font_small, p1_score_s, sdl_color);
   sdl_rect.w=texture_text_p1.width;
-  sdl_rect.h=texture_text_p1.height;  
+  sdl_rect.h=texture_text_p1.height;
   SDL_RenderCopy(sdl_renderer, texture_text_p1.texture, NULL, &sdl_rect);
   SDL_DestroyTexture(texture_text_p1.texture);
+  
+  sdl_rect.x=SCREEN_WIDTH-150;
+  loadTFTTexture(&texture_text_p1, font_small, p2_score_s, sdl_color);
+  sdl_rect.w=texture_text_p1.width;
+  sdl_rect.h=texture_text_p1.height;
+  SDL_RenderCopy(sdl_renderer, texture_text_p1.texture, NULL, &sdl_rect);
+  SDL_DestroyTexture(texture_text_p1.texture);
+  
   
   
   // Render game game  over
@@ -1007,6 +1023,7 @@ void fire(int player)
   if(shotgun[player].magazine>0)
   {
     current.y=hunters[player].y;
+    current.player=player;
     
     if(player==0)
     {
