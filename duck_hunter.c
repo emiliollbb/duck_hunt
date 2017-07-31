@@ -564,7 +564,7 @@ int main( int argc, char* args[] )
 #define DUCK_WIDTH 40
 #define DUCK_HEIGHT 30
 #define ANGLE_BULLET 35.0*M_PI/180.0
-#define SPEED_BULLET 20.0
+#define SPEED_BULLET 30.0
 #define DUCK_SPEED 3
 #define DUCK_START_X 0
 
