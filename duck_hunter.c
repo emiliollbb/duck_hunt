@@ -77,6 +77,7 @@ void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text, S
 void sync_render();
 void process_input(SDL_Event *e);
 void render_menu();
+void read_temp();
 
 
 /******* Methods to implement *******/
@@ -357,6 +358,11 @@ void sync_render()
     render();  
   }
   
+  if(frames%50==0)
+  {
+    read_temp();
+  }
+  
   end = SDL_GetTicks();
   render_time = end - start;
   
@@ -516,7 +522,6 @@ void read_temp()
   {
     fscanf (temperatureFile, "%lf", &temperature);
     temperature /= 1000;
-    printf ("The temperature is %6.3f C.\n", temperature);
     fclose (temperatureFile);
   }
 }
@@ -992,7 +997,7 @@ void render()
   }
   
   // Draw render time
-  sprintf(render_time_s, "%ums", render_time);
+  sprintf(render_time_s, "%ums %2.1fC", render_time, temperature);
   loadTFTTexture(&texture_render_time, font_roboto, render_time_s, sdl_color);
   sdl_rect.w=texture_render_time.width;
   sdl_rect.h=texture_render_time.height;
