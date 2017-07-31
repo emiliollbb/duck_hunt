@@ -349,9 +349,12 @@ void sync_render()
   }
   
   remaining = ticks;
+  // 60 fps
   //remaining = remaining + 16 - SDL_GetTicks();
   // 30 fps
-  remaining = remaining + 32 - SDL_GetTicks();
+  //remaining = remaining + 32 - SDL_GetTicks();
+  // 50 fps
+  remaining = remaining + 20 - SDL_GetTicks();
   
   if(remaining > 0)
   {
@@ -361,6 +364,11 @@ void sync_render()
   else
   {
     printf("%ld remaining!!!\n", remaining);
+  }
+  
+  if(frames%50==0)
+  {
+    printf("%ld remaining\n", remaining);
   }
   
 }
@@ -460,7 +468,8 @@ void render_menu()
   }
   loadTFTTexture(&texture_text, font_medium, "1 Player", sdl_color);
   sdl_rect.x=SCREEN_WIDTH/2-texture_text.width/2;
-  sdl_rect.y=125;
+  sdl_rect.y=SCREEN_HEIGHT-100-texture_text.height-texture_text.height;
+  sdl_rect.y/=2;
   sdl_rect.w=texture_text.width;
   sdl_rect.h=texture_text.height;  
   SDL_RenderCopy(sdl_renderer, texture_text.texture, NULL, &sdl_rect);
