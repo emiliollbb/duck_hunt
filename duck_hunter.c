@@ -41,6 +41,9 @@ SDL_DisplayMode sdl_display_mode;
 SDL_Joystick *sdl_gamepads[2];
 // Frames count
 unsigned int frames;
+// Render time
+unsigned int render_time;
+double temperature;
 // SELECT Button status
 int select_button;
 // START Button status
@@ -62,6 +65,7 @@ int players_menu;
 TTF_Font *font_small = NULL;
 TTF_Font *font_medium = NULL;
 TTF_Font *font_big = NULL;
+TTF_Font *font_roboto = NULL;
 
 
 /* Method already implemented */
@@ -92,6 +96,8 @@ void init()
   SCREEN_WIDTH = 1024;
   SCREEN_HEIGHT = 600;
   frames = 0;
+  render_time=0;
+  temperature=0;
   game_over=0;
   pause=0;
   quit=0;
@@ -203,6 +209,9 @@ void init()
   // Load big font
   font_big = load_font("ArcadeClassic.ttf", 100);  
   
+  // Load font font roboto
+  font_roboto = load_font("Roboto-Light.ttf", 14); 
+  
 }
 
 void close_sdl()
@@ -218,6 +227,8 @@ void close_sdl()
   TTF_CloseFont(font_medium);
   // Close big font
   TTF_CloseFont(font_big);
+  // Close font roboto
+  TTF_CloseFont(font_roboto);
   
   //Destroy renderer  
   if(sdl_renderer!=NULL)
@@ -326,10 +337,9 @@ void loadTFTTexture(struct sized_texture *texture, TTF_Font *font, char* text, S
 
 void sync_render()
 {
-  unsigned int ticks; 
-  long remaining;
+  unsigned int start, end; 
   
-  ticks = SDL_GetTicks();
+  start = SDL_GetTicks();
   if(!game_over && !pause && !players_menu)
   {
     // Count frames
@@ -347,21 +357,23 @@ void sync_render()
     render();  
   }
   
-  remaining = ticks;
-  //remaining = remaining + 16 - SDL_GetTicks();
-  // 30 fps
-  remaining = remaining + 32 - SDL_GetTicks();
+  end = SDL_GetTicks();
+  render_time = end - start;
   
-  if(remaining > 0)
+  // 60 fps -> 16ms
+  // 30 fps -> 32ms
+  // 50 fps -> 20ms
+  // 100 fps -> 10ms
+  
+  if(render_time < 20)
   {
     //remaining = 1;
-    SDL_Delay(remaining);
+    SDL_Delay(20 - render_time);
   }
   else
   {
-    printf("%ld remaining!!!\n", remaining);
-  }
-  
+    printf("Render time: %ud !!!!\n", render_time);
+  }  
 }
 
 void process_input(SDL_Event *e)
@@ -464,7 +476,8 @@ void render_menu()
   }
   loadTFTTexture(&texture_text, font_medium, "1 Player", sdl_color);
   sdl_rect.x=SCREEN_WIDTH/2-texture_text.width/2;
-  sdl_rect.y=125;
+  sdl_rect.y=SCREEN_HEIGHT-100-texture_text.height-texture_text.height;
+  sdl_rect.y/=2;
   sdl_rect.w=texture_text.width;
   sdl_rect.h=texture_text.height;  
   SDL_RenderCopy(sdl_renderer, texture_text.texture, NULL, &sdl_rect);
@@ -495,6 +508,18 @@ void render_menu()
   SDL_RenderPresent(sdl_renderer);
 }
 
+void read_temp()
+{
+  FILE *temperatureFile;
+  temperatureFile = fopen ("/sys/class/thermal/thermal_zone0/temp", "r");
+  if (temperatureFile != NULL)
+  {
+    fscanf (temperatureFile, "%lf", &temperature);
+    temperature /= 1000;
+    printf ("The temperature is %6.3f C.\n", temperature);
+    fclose (temperatureFile);
+  }
+}
 
 int main( int argc, char* args[] )
 {
@@ -831,7 +856,10 @@ void render()
   //  struct sized_texture texture_text_p2;
   char p1_score_s[5];
   char p2_score_s[5];
+  char render_time_s[10];
   struct sized_texture texture_game_over;
+  
+  struct sized_texture texture_render_time;
   
   //Clear screen
   SDL_SetRenderDrawColor( sdl_renderer, 0x00, 0x00, 0x00, 0xFF );
@@ -962,6 +990,16 @@ void render()
     SDL_RenderCopy(sdl_renderer, texture_text_p1.texture, NULL, &sdl_rect);
     SDL_DestroyTexture(texture_text_p1.texture);
   }
+  
+  // Draw render time
+  sprintf(render_time_s, "%ums", render_time);
+  loadTFTTexture(&texture_render_time, font_roboto, render_time_s, sdl_color);
+  sdl_rect.w=texture_render_time.width;
+  sdl_rect.h=texture_render_time.height;
+  sdl_rect.x=SCREEN_WIDTH-sdl_rect.w-5;
+  sdl_rect.y=SCREEN_HEIGHT-sdl_rect.h-5;
+  SDL_RenderCopy(sdl_renderer, texture_render_time.texture, NULL, &sdl_rect);
+  SDL_DestroyTexture(texture_render_time.texture);
   
   
   // Render game game  over
