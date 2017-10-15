@@ -8,7 +8,7 @@
 #include <time.h>
 #include <math.h>
 
-#define FULL_SCREEN 0
+#define FULL_SCREEN 1 
 #define BUTTON_A 1
 #define BUTTON_B 2
 #define BUTTON_X 0
